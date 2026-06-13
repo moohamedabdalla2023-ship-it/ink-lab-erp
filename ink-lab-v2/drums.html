@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock — INK LAB ERP V2</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6393ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+
+    <header>
+        <div class="logo-wrap">
+            <div class="logo-icon">⬡</div>
+            <div>
+                <h1>INK LAB</h1>
+                <span class="subtitle">ERP SYSTEM V2</span>
+            </div>
+        </div>
+        <nav>
+            <a href="index.html">Dashboard</a>
+            <a href="formulas.html">Formulas</a>
+            <a href="batches.html">Batches</a>
+            <a href="stock.html" class="active">Stock</a>
+            <a href="drums.html">Drums</a>
+        </nav>
+        <div class="header-right">
+            <div class="status-bar">
+                <span class="dot"></span>
+                <span id="clock">--:--:--</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="page-title">▶ <span>Stock</span> — RAW MATERIALS</div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🛢</div>
+                <div class="stat-label">TOTAL AVAILABLE</div>
+                <div class="stat-value" id="stat-total">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-label">MATERIALS OK</div>
+                <div class="stat-value" id="stat-ok" style="color:var(--green)">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-label">LOW Stock</div>
+                <div class="stat-value" id="stat-low" style="color:var(--warn)">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔴</div>
+                <div class="stat-label">EMPTY</div>
+                <div class="stat-value" id="stat-empty" style="color:var(--danger)">—</div>
+            </div>
+        </div>
+
+        <!-- ADD Stock -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">▶ ADD / UPDATE Stock</span>
+                <button class="btn btn-ghost" onclick="toggleForm()" id="toggle-btn">+ ADD Stock</button>
+            </div>
+            <div id="stock-form" style="display:none">
+                <div class="panel-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>MATERIAL *</label>
+                            <select id="s-material">
+                                <option value="">— SELECT MATERIAL —</option>
+                                <option>Cyan</option>
+                                <option>Magenta</option>
+                                <option>Yellow</option>
+                                <option>Black</option>
+                                <option>White</option>
+                                <option>Reflex Blue</option>
+                                <option>Violet</option>
+                                <option>Green</option>
+                                <option>Silver</option>
+                                <option>Gold</option>
+                                <option>Varnish</option>
+                                <option>Transparent Base</option>
+                                <option>Fluor Pink</option>
+                                <option>Fluor Yellow</option>
+                                <option>Rubine Red</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ADD KG *</label>
+                            <input id="s-add_kg" type="number" placeholder="e.g. 50" min="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>MIN THRESHOLD (KG)</label>
+                            <input id="s-threshold" type="number" placeholder="e.g. 10" min="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>BATCH CODE (optional)</label>
+                            <input id="s-batch_code" placeholder="e.g. RAW-2024-001">
+                        </div>
+                        <div class="form-group">
+                            <label>EXPIRY DATE (optional)</label>
+                            <input id="s-expiry" type="date">
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" onclick="saveStock()">💾 SAVE</button>
+                        <button class="btn btn-ghost" onclick="resetForm()">✕ CLEAR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEDUCT Stock -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">▶ DEDUCT Stock (Manual)</span>
+                <button class="btn btn-ghost" onclick="toggleDeduct()" id="toggle-deduct-btn">- DEDUCT</button>
+            </div>
+            <div id="deduct-form" style="display:none">
+                <div class="panel-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>MATERIAL *</label>
+                            <select id="d-material">
+                                <option value="">— SELECT MATERIAL —</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>DEDUCT KG *</label>
+                            <input id="d-kg" type="number" placeholder="e.g. 5" min="0" step="0.1">
+                        </div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-danger" onclick="deductStock()">⬇ DEDUCT</button>
+                        <button class="btn btn-ghost" onclick="toggleDeduct()">CANCEL</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock TABLE -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">▶ Stock LEVELS</span>
+                <button class="btn btn-ghost" onclick="loadStock()" style="font-size:0.65rem;padding:6px 14px;">↺
+                    REFRESH</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MATERIAL</th>
+                            <th>TOTAL KG</th>
+                            <th>USED KG</th>
+                            <th>AVAILABLE KG</th>
+                            <th>MIN THRESHOLD</th>
+                            <th>EXPIRY</th>
+                            <th>STATUS</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-tbody">
+                        <tr class="empty-row">
+                            <td colspan="8">LOADING...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- EDIT THRESHOLD MODAL -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal" style="max-width:400px">
+            <div class="modal-header">
+                <span class="modal-title">EDIT THRESHOLD</span>
+                <button class="modal-close" onclick="closeEditModal()">✕</button>
+            </div>
+            <div style="padding:0">
+                <div class="form-group" style="margin-bottom:16px">
+                    <label>MATERIAL</label>
+                    <input id="edit-material" disabled style="opacity:0.5">
+                </div>
+                <div class="form-group" style="margin-bottom:20px">
+                    <label>MIN THRESHOLD (KG)</label>
+                    <input id="edit-threshold" type="number" min="0" step="0.1">
+                </div>
+                <div class="btn-row" style="margin-top:0">
+                    <button class="btn btn-primary" onclick="saveThreshold()">💾 SAVE</button>
+                    <button class="btn btn-ghost" onclick="closeEditModal()">CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
+    <script src="stock.js"></script>
+</body>
+
+</html>

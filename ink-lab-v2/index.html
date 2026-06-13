@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INK LAB ERP V2</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6393ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+
+    <header>
+        <div class="logo-wrap">
+            <div class="logo-icon">⬡</div>
+            <div>
+                <h1>INK LAB</h1>
+                <span class="subtitle">ERP SYSTEM V2</span>
+            </div>
+        </div>
+        <nav>
+            <div class="bottom-nav">
+
+                <a href="index.html" class="active">
+                    🏠
+                    <span>Dashboard</span>
+                </a>
+
+                <a href="formulas.html">
+                    🎨
+                    <span>Formulas</span>
+                </a>
+
+                <a href="stock.html">
+                    📦
+                    <span>Stock</span>
+                </a>
+
+                <a href="batches.html">
+                    📊
+                    <span>Batches</span>
+                </a>
+
+                <a href="drums.html">
+                    🥁
+                    <span>Drums</span>
+                </a>
+
+            </div>
+            </div>
+    </header>
+
+    <main>
+        <div class="page-title">▶ <span>DASHBOARD</span> — OVERVIEW</div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🧪</div>
+                <div class="stat-label">FORMULAS</div>
+                <div class="stat-value" id="stat-formulas">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-label">BATCHES</div>
+                <div class="stat-value" id="stat-batches">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🛢</div>
+                <div class="stat-label">TOTAL STOCK</div>
+                <div class="stat-value" id="stat-stock">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <div class="stat-label">LOW STOCK</div>
+                <div class="stat-value" id="stat-low" style="color:var(--warn)">—</div>
+            </div>
+        </div>
+
+        <!-- LOW STOCK ALERTS -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">▶ LOW STOCK ALERTS</span>
+                <a href="stock.html" class="btn btn-ghost" style="font-size:0.65rem;padding:6px 14px;">VIEW STOCK</a>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MATERIAL</th>
+                            <th>AVAILABLE KG</th>
+                            <th>MIN THRESHOLD</th>
+                            <th>STATUS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low-stock-tbody">
+                        <tr class="empty-row">
+                            <td colspan="4">LOADING...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                ...
+            </table>
+        </div>
+        <!-- RECENT BATCHES -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">▶ RECENT BATCHES</span>
+                <a href="batches.html" class="btn btn-ghost" style="font-size:0.65rem;padding:6px 14px;">VIEW ALL</a>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Drum</th>
+                            <th>Returned</th>
+                            <th>Components</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-batches-tbody">
+                        <tr class="empty-row">
+                            <td colspan="5">LOADING...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="config.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    </script>
+    <script>
+        startClock();
+
+        async function loadDashboard() {
+            // Formulas count
+            const formulas = await dbGet("formulas", "?select=id");
+            document.getElementById("stat-formulas").textContent = Array.isArray(formulas) ? formulas.length : "—";
+
+            // Batches count
+            const batches = await dbGet("batches", "?select=id,batch_no,formula_code,target_kg,status,created_at&order=created_at.desc&limit=5");
+            const allBatches = await dbGet("batches", "?select=id");
+            document.getElementById("stat-batches").textContent = Array.isArray(allBatches) ? allBatches.length : "—";
+
+            // Recent batches table
+            const tbody = document.getElementById("recent-batches-tbody");
+            if (Array.isArray(batches) && batches.length > 0) {
+                tbody.innerHTML = batches.map(b => `
+            <tr>
+                <td class="td-code">${b.batch_no}</td>
+                <td>${b.formula_code || "—"}</td>
+                <td>${Number(b.target_kg).toFixed(1)} KG</td>
+                <td><span class="badge badge-${b.status}">${b.status.toUpperCase()}</span></td>
+                <td>${new Date(b.created_at).toLocaleDateString()}</td>
+            </tr>`).join("");
+            } else {
+                tbody.innerHTML = `<tr class="empty-row"><td colspan="5">NO BATCHES YET</td></tr>`;
+            }
+
+            // Stock
+            const stock = await dbGet("stock", "?order=material.asc");
+            if (Array.isArray(stock)) {
+                let totalKg = 0;
+                let lowItems = [];
+                stock.forEach(s => {
+                    const avail = Number(s.total_kg) - Number(s.used_kg);
+                    totalKg += avail;
+                    if (avail <= Number(s.min_threshold)) lowItems.push(s);
+                });
+                document.getElementById("stat-stock").textContent = totalKg.toFixed(1) + " KG";
+                document.getElementById("stat-low").textContent = lowItems.length;
+
+                const lowTbody = document.getElementById("low-stock-tbody");
+                if (lowItems.length > 0) {
+                    lowTbody.innerHTML = lowItems.map(s => {
+                        const avail = (Number(s.total_kg) - Number(s.used_kg)).toFixed(1);
+                        const cls = avail <= 0 ? "danger" : "warn";
+                        return `<tr>
+                    <td class="td-code">${s.material}</td>
+                    <td style="color:var(--${cls})">${avail} KG</td>
+                    <td>${Number(s.min_threshold).toFixed(1)} KG</td>
+                    <td><span class="badge badge-${avail <= 0 ? 'cancelled' : 'pending'}">${avail <= 0 ? 'EMPTY' : 'LOW'}</span></td>
+                </tr>`;
+                    }).join("");
+                } else {
+                    lowTbody.innerHTML = `<tr class="empty-row"><td colspan="4">✓ ALL STOCK LEVELS OK</td></tr>`;
+                }
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+
+</html>
