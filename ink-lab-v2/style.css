@@ -1029,3 +1029,40 @@ nav::-webkit-scrollbar {
         gap: 4px;
     }
 }
+
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #0b1220;
+    color: #fff;
+}
+
+.app {
+    display: flex;
+}
+
+.sidebar {
+    width: 200px;
+    background: #111827;
+    height: 100vh;
+    padding: 10px;
+}
+
+.sidebar button {
+    width: 100%;
+    margin: 5px 0;
+    padding: 10px;
+    background: #1f2937;
+    border: 0;
+    color: #fff;
+    cursor: pointer;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+}
+
+.page {
+    padding: 10px;
+}

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Ink Consumption</title>
+    <div class="card">
+        <h3>Cost Summary</h3>
+
+        <p>Total Cost: <span id="totalCost">0</span></p>
+        <p>Ink Cost: <span id="inkCost">0</span></p>
+        <p>Solvent Cost: <span id="solventCost">0</span></p>
+    </div>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0b1220;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: #111827;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            background: #1f2937;
+            border: 1px solid #374151;
+            color: #fff;
+            border-radius: 6px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            border: 0;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 15px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #374151;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #1f2937;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px">
+
+        <div>
+            <h4>Total Cost</h4>
+            <h2 id="totalCost">0</h2>
+        </div>
+
+        <div>
+            <h4>Total Qty</h4>
+            <h2 id="totalQty">0</h2>
+        </div>
+
+        <div>
+            <h4>Transactions</h4>
+            <h2 id="count">0</h2>
+        </div>
+
+    </div>
+    <div class="container">
+
+        <div class="card">
+
+            <h2>Ink Consumption</h2>
+
+            <input type="date" id="date">
+            <input type="text" id="order_no" placeholder="Order No">
+            <input type="text" id="supplier" placeholder="Supplier">
+            <input type="month" id="filterMonth" onchange="render()">
+            <!-- TYPE -->
+            <select id="type">
+                <option value="Ink">Ink</option>
+                <option value="Solvent">Solvent</option>
+            </select>
+
+            <!-- FILTER -->
+            <select id="filterType" onchange="render()">
+                <option value="">All</option>
+                <option value="Ink">Ink</option>
+                <option value="Solvent">Solvent</option>
+            </select>
+
+            <!-- MATERIAL -->
+            <select id="material">
+                <optgroup label="Process Colors">
+                    <option>Cyan</option>
+                    <option>Magenta</option>
+                    <option>Yellow</option>
+                    <option>Black</option>
+                </optgroup>
+
+                <optgroup label="Basic Extensions">
+                    <option>White</option>
+                    <option>Transparent Base</option>
+                    <option>Varnish</option>
+                </optgroup>
+
+                <optgroup label="Special Colors">
+                    <option>Reflex Blue</option>
+                    <option>Blue 072</option>
+                    <option>Violet</option>
+                    <option>Green</option>
+                    <option>Orange 021</option>
+                    <option>Red 032</option>
+                    <option>Rubine Red</option>
+                    <option>Warm Red</option>
+                    <option>Rhoda Mine Red</option>
+                    <option>Black Deep</option>
+                </optgroup>
+
+                <optgroup label="Metallic">
+                    <option>Silver</option>
+                    <option>Gold</option>
+                </optgroup>
+
+                <optgroup label="Fluorescent">
+                    <option>Fluor Pink</option>
+                    <option>Fluor Yellow</option>
+                    <option>Fluor Green</option>
+                    <option>Fluor Orange</option>
+                </optgroup>
+
+                <optgroup label="Industrial Specials">
+                    <option>High White</option>
+                    <option>Low Migration White</option>
+                    <option>Opaque White</option>
+                    <option>Base Paste</option>
+                </optgroup>
+
+                <optgroup label="Solvents / Chemicals">
+                    <option>Ethanol</option>
+                    <option>Methoxy Propanol</option>
+                    <option>IPA (Isopropyl Alcohol)</option>
+                    <option>Ethyl Acetate</option>
+                    <option>Methyl Ethyl Ketone (MEK)</option>
+                </optgroup>
+                <optgroup label="Pantone Colors">
+                    <option>Pantone Yellow C</option>
+                    <option>Pantone Yellow U</option>
+                    <option>Pantone Orange 021 C</option>
+                    <option>Pantone Warm Red C</option>
+                    <option>Pantone Red 032 C</option>
+                    <option>Pantone Rubine Red C</option>
+                    <option>Pantone Rhodamine Red C</option>
+                    <option>Pantone Purple C</option>
+                    <option>Pantone Violet C</option>
+                    <option>Pantone Blue 072 C</option>
+                    <option>Pantone Reflex Blue C</option>
+                    <option>Pantone Green C</option>
+                    <option>Pantone Black C</option>
+                    <option>Pantone White</option>
+                </optgroup>
+            </select>
+
+        </div>
+
+        <input type="number" id="qty" placeholder="Qty (kg)">
+        <input type="number" id="price" placeholder="Price per kg">
+
+        <button onclick="add()">Add Record</button>
+
+    </div>
+
+    <div class="card">
+
+        <h3>Records</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Order</th>
+                    <th>Supplier</th>
+                    <th>Color</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Cost</th>
+                </tr>
+            </thead>
+
+            <tbody id="table"></tbody>
+        </table>
+
+    </div>
+    <div class="card">
+        <h3>Monthly Summary</h3>
+
+        <table border="1" width="100%">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th>Total Qty</th>
+                    <th>Total Cost</th>
+                    <th>Transactions</th>
+                </tr>
+            </thead>
+
+            <tbody id="monthlyTable"></tbody>
+        </table>
+    </div>
+    </div>
+
+    <script src="consumption.js"></script>
+
+</body>
+
+</html>
