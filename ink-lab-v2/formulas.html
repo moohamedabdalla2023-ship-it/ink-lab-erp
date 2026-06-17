@@ -351,3 +351,155 @@
 <script>
     console.log("TEST INLINE SCRIPT WORKS");
 </script>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>INK LAB - Ink Calculator</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #22c55e;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            background: #0b1220;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h2>INK LAB Ink Calculator</h2>
+
+        <!-- MODE -->
+        <label>Mode</label>
+        <select id="mode">
+            <option value="label">Label (Pieces)</option>
+            <option value="shrink">Shrink (Weight)</option>
+        </select>
+
+        <!-- LABEL INPUTS -->
+        <div id="labelBox">
+            <input id="pieces" type="number" placeholder="Pieces">
+            <input id="width" type="number" placeholder="Width (mm)">
+            <input id="height" type="number" placeholder="Height (mm)">
+        </div>
+
+        <!-- SHRINK INPUTS -->
+        <div id="shrinkBox" style="display:none;">
+            <input id="weight" type="number" placeholder="Weight (kg)">
+            <input id="gsm" type="number" placeholder="GSM">
+        </div>
+
+        <!-- COMMON INPUTS -->
+        <input id="bcm" type="number" placeholder="Anilox BCM">
+        <input id="coverage" type="number" placeholder="Coverage (0 - 1)">
+        <input id="density" type="number" value="0.95" placeholder="Density">
+
+        <button onclick="calculate()">Calculate</button>
+
+        <div class="result" id="result"></div>
+
+    </div>
+
+    <script>
+        document.getElementById("mode").addEventListener("change", function () {
+            if (this.value === "label") {
+                document.getElementById("labelBox").style.display = "block";
+                document.getElementById("shrinkBox").style.display = "none";
+            } else {
+                document.getElementById("labelBox").style.display = "none";
+                document.getElementById("shrinkBox").style.display = "block";
+            }
+        });
+
+        function calculate() {
+
+            let mode = document.getElementById("mode").value;
+
+            let bcm = parseFloat(document.getElementById("bcm").value);
+            let coverage = parseFloat(document.getElementById("coverage").value);
+            let density = parseFloat(document.getElementById("density").value) || 0.95;
+
+            let area = 0;
+
+            // LABEL
+            if (mode === "label") {
+
+                let pieces = parseFloat(document.getElementById("pieces").value);
+                let width = parseFloat(document.getElementById("width").value);
+                let height = parseFloat(document.getElementById("height").value);
+
+                area = (width / 1000) * (height / 1000) * pieces;
+            }
+
+            // SHRINK
+            if (mode === "shrink") {
+
+                let weight = parseFloat(document.getElementById("weight").value);
+                let gsm = parseFloat(document.getElementById("gsm").value);
+
+                area = weight / gsm;
+            }
+
+            // VALIDATION
+            if (!bcm || !coverage || !area) {
+                document.getElementById("result").innerHTML =
+                    "❌ Missing inputs";
+                return;
+            }
+
+            let ink = (area * bcm * coverage * density) / 1000;
+
+            document.getElementById("result").innerHTML = `
+    <b>Area:</b> ${area.toFixed(2)} m² <br>
+    <b>Ink Consumption:</b> ${ink.toFixed(2)} kg
+  `;
+        }
+    </script>
+
+</body>
+
+</html>

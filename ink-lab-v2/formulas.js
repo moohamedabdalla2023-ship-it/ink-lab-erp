@@ -442,8 +442,30 @@ function runMatch() {
     const newF = readForm();
     const box = document.getElementById("match-box");
     if (!box) return;
-    if (matchMode === "deltae") runDeltaEMatch(newF, box);
-    else runRatioMatch(newF, box);
+
+    let result;
+
+    if (matchMode === "deltae") {
+        result = runDeltaEMatch(newF, box);
+    } else {
+        result = runRatioMatch(newF, box);
+    }
+
+    if (!result || !result.best) return;
+
+    const best = result.best;
+
+    // ❗ شرط الفلترة الأساسي
+    if (best.deltaE > 4) {
+        console.log("Ignored: DeltaE > 4 =", best.deltaE);
+        return;
+    }
+
+    const suggestions = getCorrections(newF, best.f);
+
+    console.log("AI Suggestions:", suggestions);
+
+    renderSuggestions(suggestions);
 }
 
 async function getFormulaStock(formulaId) {
@@ -628,53 +650,99 @@ function runRatioMatch(newF, box) {
             </div>
         </div>`;
     renderStockBadge(best.f.id, "match-stock-ratio");
+    return {
+    best: {
+        f: bestFormula,
+        deltaE: deltaEValue
+    }
+};
 }
 
 function runDeltaEMatch(newF, box) {
-    const hasLab = newF.lab_l !== null && newF.lab_a !== null && newF.lab_b !== null;
+
+    const hasLab =
+        newF.lab_l !== null &&
+        newF.lab_a !== null &&
+        newF.lab_b !== null;
 
     if (!hasLab) {
         box.style.display = "block";
         box.innerHTML = `
             <div style="padding:24px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);text-align:center">
                 <div style="font-weight:700;color:var(--text);margin-bottom:6px;font-size:1rem">Enter L* a* b* Values</div>
-                <div style="color:var(--text-3);font-size:0.88rem;line-height:1.6">Measure the mixed ink with your spectrophotometer<br>and enter the Lab values to use Delta E 2000</div>
+                <div style="color:var(--text-3);font-size:0.88rem;line-height:1.6">
+                    Measure the mixed ink with your spectrophotometer<br>
+                    and enter the Lab values to use Delta E 2000
+                </div>
             </div>`;
-        return;
+        return null;
     }
 
     const results = allFormulas
         .filter(ex => ex.code !== newF.code && ex.lab_l !== null)
         .map(ex => ({
             f: ex,
-            de: parseFloat(deltaE2000(newF.lab_l, newF.lab_a, newF.lab_b, ex.lab_l, ex.lab_a, ex.lab_b).toFixed(2))
+            de: parseFloat(
+                deltaE2000(
+                    newF.lab_l,
+                    newF.lab_a,
+                    newF.lab_b,
+                    ex.lab_l,
+                    ex.lab_a,
+                    ex.lab_b
+                ).toFixed(2)
+            )
         }))
-        .sort((a,b) => a.de - b.de);
+        .sort((a, b) => a.de - b.de);
 
     if (!results.length) {
         box.style.display = "block";
-        box.innerHTML = `<div style="padding:20px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);text-align:center;color:var(--text-3)">No formulas with Lab values to compare</div>`;
-        return;
+        box.innerHTML = `
+            <div style="padding:20px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);text-align:center;color:var(--text-3)">
+                No formulas with Lab values to compare
+            </div>`;
+        return null;
     }
 
     const best = results[0];
+
+    // ❗ فلترة مهمة جدًا: تجاهل أي Match DeltaE > 4
+    if (best.de > 4) {
+        box.style.display = "block";
+        box.innerHTML = `
+            <div style="padding:20px;border:1px solid var(--danger);border-radius:12px;background:var(--surface2);text-align:center;color:var(--danger)">
+                No acceptable match (Delta E > 4)
+            </div>`;
+        return null;
+    }
+
     const de = best.de;
-    const color = de < 1 ? "var(--danger)" : de < 2 ? "var(--warn)" : de < 5 ? "var(--accent)" : "var(--green)";
-    const label = de < 1 ? "Nearly Identical Color"
-        : de < 2 ? "Very Close"
-        : de < 3 ? "Acceptable"
-        : de < 5 ? "Noticeable Difference"
-        : "Significant Color Difference";
+
+    const color =
+        de < 1 ? "var(--danger)" :
+        de < 2 ? "var(--warn)" :
+        de < 5 ? "var(--accent)" :
+        "var(--green)";
+
+    const label =
+        de < 1 ? "Nearly Identical Color" :
+        de < 2 ? "Very Close" :
+        de < 3 ? "Acceptable" :
+        de < 5 ? "Noticeable Difference" :
+        "Significant Color Difference";
+
     const pct = Math.max(0, Math.round(100 - de * 12));
 
     const labComp = `
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">
-            ${["L*","a*","b*"].map((ch, i) => {
-                const keys = ["lab_l","lab_a","lab_b"];
+            ${["L*", "a*", "b*"].map((ch, i) => {
+                const keys = ["lab_l", "lab_a", "lab_b"];
                 const v1 = newF[keys[i]];
                 const v2 = best.f[keys[i]];
                 const d = v2 !== null ? Math.abs(v1 - v2).toFixed(2) : "-";
-                return `<div style="background:var(--bg2);padding:10px;border-radius:8px;border:1px solid var(--border);text-align:center">
+
+                return `
+                <div style="background:var(--bg2);padding:10px;border-radius:8px;border:1px solid var(--border);text-align:center">
                     <div style="font-size:0.72rem;color:var(--text-3);margin-bottom:4px">${ch}</div>
                     <div style="font-size:0.88rem;font-weight:700;color:var(--accent)">${v1}</div>
                     <div style="font-size:0.78rem;color:var(--text-2)">vs ${v2 ?? "-"}</div>
@@ -685,29 +753,82 @@ function runDeltaEMatch(newF, box) {
 
     const others = results.slice(1, 3).map(r => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);margin-top:8px">
-            <div><span style="color:var(--accent);font-weight:700">${htmlEscape(r.f.code)}</span><span style="color:var(--text-2);margin-left:8px">${htmlEscape(r.f.name)}</span></div>
-            <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:800;color:var(--text-2)">Delta E ${r.de}</span><button class="btn btn-ghost" style="font-size:0.8rem;padding:5px 10px" onclick="viewFormula(${r.f.id})">View</button></div>
-        </div>`).join("");
+            <div>
+                <span style="color:var(--accent);font-weight:700">${htmlEscape(r.f.code)}</span>
+                <span style="color:var(--text-2);margin-left:8px">${htmlEscape(r.f.name)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-weight:800;color:var(--text-2)">Delta E ${r.de}</span>
+                <button class="btn btn-ghost" style="font-size:0.8rem;padding:5px 10px" onclick="viewFormula(${r.f.id})">
+                    View
+                </button>
+            </div>
+        </div>
+    `).join("");
 
     box.style.display = "block";
     box.innerHTML = `
         <div style="border:1.5px solid ${color};border-radius:12px;overflow:hidden">
-            <div style="padding:12px 18px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
-                <span style="font-weight:700;font-size:0.95rem;color:${color}">Delta E 2000</span>
+
+            <div style="padding:12px 18px;background:rgba(0,0,0,0.2);display:flex;justify-content:space-between;border-bottom:1px solid var(--border)">
+                <span style="font-weight:700;color:${color}">Delta E 2000</span>
                 <span style="font-size:0.8rem;color:var(--text-3)">${label}</span>
             </div>
-            <div style="padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface2)">
-                <div><div style="font-size:1.1rem;font-weight:800;color:var(--accent)">${htmlEscape(best.f.code)}</div><div style="color:var(--text-2);margin-top:3px">${htmlEscape(best.f.name)}</div></div>
-                <div style="text-align:center"><div style="font-size:2.8rem;font-weight:900;color:${color};line-height:1">Delta E ${de}</div><div style="font-size:0.75rem;color:${color};font-weight:600;margin-top:2px">${pct}% perceptual match</div><button class="btn btn-primary" style="margin-top:10px;font-size:0.82rem;padding:6px 14px" onclick="viewFormula(${best.f.id})">View Formula</button></div>
+
+            <div style="padding:16px 18px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface2)">
+                <div>
+                    <div style="font-size:1.1rem;font-weight:800;color:var(--accent)">
+                        ${htmlEscape(best.f.code)}
+                    </div>
+                    <div style="color:var(--text-2);margin-top:3px">
+                        ${htmlEscape(best.f.name)}
+                    </div>
+                </div>
+
+                <div style="text-align:center">
+                    <div style="font-size:2.8rem;font-weight:900;color:${color}">
+                        ΔE ${de}
+                    </div>
+                    <div style="font-size:0.75rem;color:${color};font-weight:600">
+                        ${pct}% match
+                    </div>
+
+                    <button class="btn btn-primary"
+                        style="margin-top:10px;font-size:0.82rem;padding:6px 14px"
+                        onclick="viewFormula(${best.f.id})">
+                        View Formula
+                    </button>
+                </div>
             </div>
-            <div style="padding:14px 18px;border-bottom:1px solid var(--border)">${labComp}</div>
-            ${others ? `<div style="padding:14px 18px"><div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Other Matches</div>${others}</div>` : ""}
-            <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,0.15);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                <span style="font-size:0.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Stock:</span>
+
+            <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
+                ${labComp}
+            </div>
+
+            ${others ? `
+            <div style="padding:14px 18px">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:8px">
+                    Other Matches
+                </div>
+                ${others}
+            </div>` : ""}
+
+            <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,0.15)">
+                <span style="font-size:0.72rem;color:var(--text-3)">Stock:</span>
                 <span id="match-stock-deltae"></span>
             </div>
-        </div>`;
+
+        </div>
+    `;
+
     renderStockBadge(best.f.id, "match-stock-deltae");
+
+    return {
+        best: {
+            f: best.f,
+            deltaE: best.de
+        }
+    };
 }
 
 async function saveFormula() {
@@ -762,6 +883,65 @@ const duplicatePantone = allFormulas.find(x =>
         showToast("Error: " + (result.data?.message || "Unknown"), "error");
     }
 }
+function calculateInk({
+  pieces = 0,
+  width = 0,
+  height = 0,
+  gsm = 0,
+  weight = 0,
+  mode = "label",
+  bcm = 0,
+  coverage = 0,
+  density = 0.95
+}) {
+
+  let area = 0;
+
+  // LABEL MODE
+  if (mode === "label") {
+
+    if (!pieces || !width || !height) {
+      return { error: "Missing label inputs" };
+    }
+
+    area = (width / 1000) * (height / 1000) * pieces;
+  }
+
+  // SHRINK MODE
+  else if (mode === "shrink") {
+
+    if (!weight || !gsm) {
+      return { error: "Missing shrink inputs" };
+    }
+
+    if (gsm <= 0) {
+      return { error: "GSM cannot be 0" };
+    }
+
+    area = weight / gsm;
+  }
+
+  // COMMON VALIDATION
+  if (!bcm || !coverage) {
+    return { error: "Missing BCM or Coverage" };
+  }
+
+  const ink = (area * bcm * coverage * density) / 1000;
+
+  return {
+    area_m2: area,
+    ink_kg: ink
+  };
+}
+console.log(calculateInk({
+  mode: "label",
+  pieces: 100000,
+  width: 25,
+  height: 250,
+  bcm: 4.5,
+  coverage: 0.35,
+  density: 0.95
+}));
 
 async function loadFormulas() {
     const tbody = document.getElementById("formulas-tbody");
