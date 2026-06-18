@@ -575,24 +575,36 @@ function runRatioMatch(newF, box) {
     const simDE = deltaE2000(simNew.L, simNew.a, simNew.b, simBest.L, simBest.a, simBest.b);
 
     const compRows = COLORS
-        .filter(c => (newF[c] || 0) > 0 || (best.f[c] || 0) > 0)
-        .map(c => {
-            const r1 = (newF[c] || 0) / d1 * 100;
-            const r2 = (best.f[c] || 0) / d2 * 100;
-            const diff = Math.abs(r1 - r2);
-            const exact = diff < 0.5;
-            const ok = diff <= 5;
-            const bg = exact ? "var(--green-dim)" : ok ? "rgba(99,147,255,0.12)" : "var(--warn-dim)";
-            const col = exact ? "var(--green)" : ok ? "var(--accent)" : "var(--warn)";
-            const txt = exact ? "Match" : `Delta ${diff.toFixed(1)}%`;
-            return `<tr>
-                <td style="font-weight:600">${COLOR_LABELS[c]} <span style="font-size:0.7rem;color:var(--text-3);margin-left:4px">w:${COLOR_WEIGHT[c]}</span></td>
-                <td style="font-family:var(--mono);color:var(--accent)">${r1.toFixed(2)}%</td>
-                <td style="font-family:var(--mono);color:var(--text-2)">${r2.toFixed(2)}%</td>
-                <td style="text-align:center"><span style="font-size:0.76rem;padding:2px 9px;border-radius:99px;font-weight:600;background:${bg};color:${col}">${txt}</span></td>
-            </tr>`;
-        }).join("");
-
+    .filter(c => (newF[c] || 0) > 0 || (best.f[c] || 0) > 0)
+    .map(c => {
+        const r1 = (newF[c] || 0) / d1 * 100;
+        const r2 = (best.f[c] || 0) / d2 * 100;
+        const diff = Math.abs(r1 - r2);
+        const exact = diff < 0.5;
+        const ok = diff <= 5;
+        const bg = exact ? "rgba(34,197,94,0.15)" : ok ? "rgba(99,147,255,0.12)" : "rgba(234,179,8,0.15)";
+        const col = exact ? "var(--green)" : ok ? "var(--accent)" : "var(--warn)";
+        const txt = exact ? "Match" : `Δ ${diff.toFixed(1)}%`;
+        
+        // تصميم مرن يناسب الموبايل تماماً بدلاً من الصف العريض
+        return `
+        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; color: #fff; font-size: 0.9rem;">${COLOR_LABELS[c]}</span>
+                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; background:${bg}; color:${col}">${txt}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
+                <div>
+                    <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">NEW FORMULA</span>
+                    <strong style="color: var(--accent); font-family: var(--mono);">${r1.toFixed(2)}%</strong>
+                </div>
+                <div style="border-left: 1px solid var(--border); padding-left: 8px;">
+                    <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">TARGET</span>
+                    <strong style="color: var(--text-2); font-family: var(--mono);">${r2.toFixed(2)}%</strong>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
     const corrHTML = getCorrections(newF, best.f).slice(0, 5).map(c => {
         const sign = c.diff > 0 ? "+" : "";
         const col = c.diff > 0 ? "var(--green)" : "var(--danger)";
@@ -665,7 +677,146 @@ function runRatioMatch(newF, box) {
     }
 };
 }
+// ==========================================
+// 1. محرك الحسابات الفني المطور لطباعة الفلكسو
+// ==========================================
 
+function calculateFlexoInkAdvanced(mode, params) {
+    let totalAreaM2 = 0;
+
+    // كثافات خامات البلاستيك القياسية (g/cm³)
+    const filmDensities = {
+        'ldpe': 0.92,
+        'petg': 1.32,
+        'pvc': 1.35
+    };
+
+    if (mode === 'pieces') {
+        const lengthM = parseFloat(params.lengthMm) / 1000;
+        const widthM = parseFloat(params.widthMm) / 1000;
+        const count = parseInt(params.pieces) || 0;
+        totalAreaM2 = lengthM * widthM * count;
+    } else if (mode === 'weight') {
+        const filmWeightKg = parseFloat(params.filmWeightKg) || 0;
+        const micron = parseFloat(params.micron) || 0;
+        const filmType = params.filmType || 'ldpe';
+        
+        const filmDensity = filmDensities[filmType] || 0.92;
+
+        if (!filmWeightKg || !micron) return null;
+
+        totalAreaM2 = filmWeightKg / (micron * filmDensity * 0.001);
+    }
+
+    if (totalAreaM2 <= 0) return null;
+
+    // --- الحسبة الفنية المباشرة بوحدة cm³/m² ---
+    
+    // قراءة قيمة الأنالوكس مباشرة كما هي مكتوبة على الأسطوانة
+    const aniloxVolume = parseFloat(params.aniloxVolume) || 0; 
+    
+    // سمك طبقة الحبر الرطب = حجم الأنالوكس × معامل النقل الفعلي (40% على البلاستيك)
+    const wetLayerMicrons = aniloxVolume * 0.40; 
+
+    // نسبة المواد الصلبة المتبقية في حبر السولفنت بعد التبخر (Solid Content = 30%)
+    const solidContentPct = 0.30; 
+
+    const coverageDecimal = parseFloat(params.coveragePct) / 100;
+    const inkDensity = parseFloat(params.density) || 1.0;
+
+    // حساب الوزن الصافي للحبر الجاف/المركز المطلوب بالكيلوجرام
+    let inkKg = (totalAreaM2 * coverageDecimal * wetLayerMicrons * inkDensity * solidContentPct) / 1000;
+
+    // إضافة نسبة الهدر وضبط الماكينة
+    const wasteMultiplier = 1 + (parseFloat(params.wastePct || 10) / 100);
+    inkKg = inkKg * wasteMultiplier;
+
+    return {
+        totalAreaM2: parseFloat(totalAreaM2.toFixed(2)),
+        inkRequiredKg: parseFloat(inkKg.toFixed(3))
+    };
+}
+
+// ==========================================
+// 2. إدارة واجهة المستخدم والتبديل (UI Logic)
+// ==========================================
+
+let currentFlexoMode = 'pieces';
+
+function switchCalcMode(mode) {
+    currentFlexoMode = mode;
+    const tabPieces = document.getElementById('tab-pieces');
+    const tabWeight = document.getElementById('tab-weight');
+    const secPieces = document.getElementById('section-pieces');
+    const secWeight = document.getElementById('section-weight');
+    
+    if (!tabPieces || !tabWeight || !secPieces || !secWeight) return;
+
+    if (mode === 'pieces') {
+        tabPieces.style.background = '#3b82f6';
+        tabPieces.style.color = 'white';
+        tabPieces.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        tabWeight.style.background = 'transparent';
+        tabWeight.style.color = '#94a3b8';
+        tabWeight.style.boxShadow = 'none';
+        secPieces.style.display = 'block';
+        secWeight.style.display = 'none';
+    } else {
+        tabWeight.style.background = '#3b82f6';
+        tabWeight.style.color = 'white';
+        tabWeight.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        tabPieces.style.background = 'transparent';
+        tabPieces.style.color = '#94a3b8';
+        tabPieces.style.boxShadow = 'none';
+        secPieces.style.display = 'none';
+        secWeight.style.display = 'block';
+    }
+    runLiveCalculation();
+}
+
+function runLiveCalculation() {
+    const coveragePct = parseFloat(document.getElementById('in-coverage')?.value) || 0;
+    // قراءة الحقل الجديد للأنالوكس
+    const aniloxVolume = parseFloat(document.getElementById('in-anilox-volume')?.value) || 0;
+    const density = parseFloat(document.getElementById('in-density')?.value) || 1.0;
+    const wastePct = parseFloat(document.getElementById('in-waste')?.value) || 0;
+
+    let params = {
+        coveragePct: coveragePct,
+        aniloxVolume: aniloxVolume,
+        density: density,
+        wastePct: wastePct
+    };
+
+    if (currentFlexoMode === 'pieces') {
+        params.pieces = document.getElementById('in-pieces')?.value || 0;
+        params.lengthMm = document.getElementById('in-length')?.value || 0;
+        params.widthMm = document.getElementById('in-width')?.value || 0;
+    } else {
+        params.filmWeightKg = document.getElementById('in-film-weight')?.value || 0;
+        params.micron = document.getElementById('in-micron')?.value || 0;
+        params.filmType = document.getElementById('in-film-type')?.value || 'ldpe';
+    }
+
+    const result = calculateFlexoInkAdvanced(currentFlexoMode, params);
+
+    const outInkWeight = document.getElementById('out-ink-weight');
+    const outTotalArea = document.getElementById('out-total-area');
+
+    if (!outInkWeight || !outTotalArea) return;
+
+    if (result) {
+        outInkWeight.innerText = `${result.inkRequiredKg.toFixed(3)} KG`;
+        outTotalArea.innerText = `${result.totalAreaM2.toLocaleString()} m²`;
+    } else {
+        outInkWeight.innerText = `0 KG`;
+        outTotalArea.innerText = `0 m²`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    runLiveCalculation();
+});
 function runDeltaEMatch(newF, box) {
     // 1. قراءة القيم مباشرة من عناصر الواجهة (DOM) لضمان عدم التعليق على قيم قديمة
     const inputL = parseFloat(document.getElementById("f-lab_l")?.value);

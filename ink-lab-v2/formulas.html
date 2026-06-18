@@ -53,261 +53,338 @@
                 <div class="stat-label">Total Formulas</div>
                 <div class="stat-value" id="stat-total">—</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon">🔵</div>
-                <div class="stat-label">With Cyan</div>
-                <div class="stat-value" id="stat-cyan">—</div>
+
+        </div>
+
+        </div>
+        <div class="ink-calc-mobile-container"
+            style="max-width: 480px; margin: 0 auto; background: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; box-sizing: border-box;">
+
+            <div style="text-align: center; padding: 12px 0; border-bottom: 1px solid #1e293b; margin-bottom: 20px;">
+                <h1 style="font-size: 1.25rem; font-weight: 800; color: #3b82f6; margin: 0;">Flexo Ink Calculator
+                </h1>
+                <p style="font-size: 0.75rem; color: #64748b; margin: 4px 0 0 0;">Solvent-Based Ink Estimation</p>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon">🔴</div>
-                <div class="stat-label">With Magenta</div>
-                <div class="stat-value" id="stat-magenta">—</div>
+
+            <div style="display: flex; background: #1e293b; padding: 4px; border-radius: 12px; margin-bottom: 20px;">
+                <div id="tab-pieces" onclick="switchCalcMode('pieces')"
+                    style="flex: 1; text-align: center; padding: 12px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #3b82f6; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                    📦 Label (Pieces)
+                </div>
+                <div id="tab-weight" onclick="switchCalcMode('weight')"
+                    style="flex: 1; text-align: center; padding: 12px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; color: #94a3b8;">
+                    ⚖️ Shrink (Weight)
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon">⚫</div>
-                <div class="stat-label">With Black</div>
-                <div class="stat-value" id="stat-black">—</div>
+
+            <form id="flexo-calc-form" oninput="runLiveCalculation()">
+
+                <div id="section-pieces">
+                    <div style="margin-bottom: 14px;">
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Total
+                            Pieces (Count)</label>
+                        <input type="number" id="in-pieces" value="50000" placeholder="e.g. 50000"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Length
+                                (mm)</label>
+                            <input type="number" id="in-length" value="150" placeholder="mm"
+                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Width
+                                (mm)</label>
+                            <input type="number" id="in-width" value="100" placeholder="mm"
+                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="section-weight" style="display: none;">
+                    <div style="margin-bottom: 14px;">
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Film
+                            Weight (KG)</label>
+                        <input type="number" id="in-film-weight" value="1000" placeholder="e.g. 1000"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 14px;">
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Film
+                                Type</label>
+                            <select id="in-film-type"
+                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                                <option value="ldpe" selected>LDPE (Density 0.92)</option>
+                                <option value="petg">PET-G (Density 1.32)</option>
+                                <option value="pvc">PVC (Density 1.35)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Thickness
+                                (μm)</label>
+                            <input type="number" id="in-micron" value="50" placeholder="Micron"
+                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px dashed #334155; margin: 20px 0; padding-top: 16px;"></div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Coverage
+                            %</label>
+                        <input type="number" id="in-coverage" value="40" placeholder="%"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Anilox
+                            Vol (cm³/m²)</label>
+                        <input type="number" id="in-anilox-volume" value="6.0" step="0.1" placeholder="cm³/m²"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Ink
+                            Density (g/cm³)</label>
+                        <input type="number" id="in-density" value="1.0" step="0.01"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Washing/Waste
+                            %</label>
+                        <input type="number" id="in-waste" value="10"
+                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    </div>
+                </div>
+            </form>
+
+            <div id="result-card"
+                style="background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #3b82f6; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
+                <div
+                    style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px;">
+                    Total Ink Required</div>
+                <div id="out-ink-weight"
+                    style="font-size: 2.25rem; font-weight: 900; color: #10b981; line-height: 1.2;">0.000
+                    KG</div>
+
+                <div
+                    style="display: flex; justify-content: space-between; border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px; font-size: 0.8rem; color: #94a3b8;">
+                    <span>Calculated Area:</span>
+                    <strong id="out-total-area" style="color: #fff;">0 m²</strong>
+                </div>
             </div>
         </div>
+        <!-- ADD FORMULA -->
         <div class="panel">
             <div class="panel-header">
-                <div class="panel-title">
-                    LAB Correction
-                </div>
+                <span class="panel-title">Add New Formula</span>
+                <button class="btn btn-primary" id="toggle-btn" onclick="toggleForm()">+ Add Formula</button>
             </div>
 
-            <div class="panel-body">
+            <div id="formula-form" style="display:none">
+                <div class="panel-body">
 
-                <div class="form-grid">
+                    <!-- BASIC INFO -->
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Formula Code *</label>
+                            <input id="f-code" placeholder="e.g. PMS-485" autocomplete="off" oninput="onColorInput()">
 
-                    <div class="form-group">
-                        <label>Actual L</label>
-                        <input id="corr-l">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Actual a</label>
-                        <input id="corr-a">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Actual b</label>
-                        <input id="corr-b">
-                    </div>
-
-                </div>
-
-                <button class="btn btn-primary" data-id="" onclick="calculateFormulaCorrection(this)">
-                    Calculate Correction
-                </button>
-            </div>
-            <!-- ADD FORMULA -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">Add New Formula</span>
-                    <button class="btn btn-primary" id="toggle-btn" onclick="toggleForm()">+ Add Formula</button>
-                </div>
-
-                <div id="formula-form" style="display:none">
-                    <div class="panel-body">
-
-                        <!-- BASIC INFO -->
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Formula Code *</label>
-                                <input id="f-code" placeholder="e.g. PMS-485" autocomplete="off"
-                                    oninput="onColorInput()">
-
-                            </div>
-                            <div class="form-group">
-                                <label>Formula Name *</label>
-                                <input id="f-name" placeholder="e.g. Pantone 485 Red" oninput="onColorInput()">
-
-
-                            </div>
-                            <div class="form-group">
-                                <label>Pantone Number</label>
-                                <input id="pantoneNumber" placeholder="e.g. 186 C" oninput="checkPantoneMatch()">
-                            </div>
-                            <div id="pantone-match-box" style="display:none"></div>
-                            <div class="form-group">
-                                <label>Drum Size (KG)</label>
-                                <input id="f-drum" type="number" value="20" min="0.1" step="0.1"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group">
-                                <label>Notes</label>
-                                <input id="f-notes" placeholder="Optional notes">
-                                <input id="tech-name" type="text" placeholder="Technician Name">
-                            </div>
                         </div>
+                        <div class="form-group">
+                            <label>Formula Name *</label>
+                            <input id="f-name" placeholder="e.g. Pantone 485 Red" oninput="onColorInput()">
 
-                        <!-- INK COMPONENTS -->
-                        <div style="margin-top:22px;margin-bottom:14px;padding-bottom:10px;
+
+                        </div>
+                        <div class="form-group">
+                            <label>Pantone Number</label>
+                            <input id="pantoneNumber" placeholder="e.g. 186 C" oninput="checkPantoneMatch()">
+                        </div>
+                        <div id="pantone-match-box" style="display:none"></div>
+                        <div class="form-group">
+                            <label>Drum Size (KG)</label>
+                            <input id="f-drum" type="number" value="20" min="0.1" step="0.1" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input id="f-notes" placeholder="Optional notes">
+                            <input id="tech-name" type="text" placeholder="Technician Name">
+                        </div>
+                    </div>
+
+                    <!-- INK COMPONENTS -->
+                    <div style="margin-top:22px;margin-bottom:14px;padding-bottom:10px;
                     border-bottom:1px solid var(--border);font-size:0.82rem;font-weight:700;
                     color:var(--text-3);text-transform:uppercase;letter-spacing:0.8px">
-                            Ink Components — KG per drum
-                        </div>
+                        Ink Components — KG per drum
+                    </div>
 
-                        <div class="form-grid">
-                            <div class="form-group"><label>Cyan</label>
-                                <input id="f-cyan" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Magenta</label>
-                                <input id="f-magenta" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Yellow</label>
-                                <input id="f-yellow" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Black</label>
-                                <input id="f-black" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>White</label>
-                                <input id="f-white" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Reflex Blue</label>
-                                <input id="f-reflex_blue" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Violet</label>
-                                <input id="f-violet" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Green</label>
-                                <input id="f-green" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Silver</label>
-                                <input id="f-silver" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Gold</label>
-                                <input id="f-gold" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Varnish</label>
-                                <input id="f-varnish" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Transparent Base</label>
-                                <input id="f-transparent_base" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Fluor Pink</label>
-                                <input id="f-fluor_pink" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Fluor Yellow</label>
-                                <input id="f-fluor_yellow" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group"><label>Rubine Red</label>
-                                <input id="f-rubine_red" type="number" value="0" min="0" step="0.001"
-                                    oninput="onColorInput()">
-                            </div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>Cyan</label>
+                            <input id="f-cyan" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
                         </div>
+                        <div class="form-group"><label>Magenta</label>
+                            <input id="f-magenta" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Yellow</label>
+                            <input id="f-yellow" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Black</label>
+                            <input id="f-black" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>White</label>
+                            <input id="f-white" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Reflex Blue</label>
+                            <input id="f-reflex_blue" type="number" value="0" min="0" step="0.001"
+                                oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Violet</label>
+                            <input id="f-violet" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Green</label>
+                            <input id="f-green" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Silver</label>
+                            <input id="f-silver" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Gold</label>
+                            <input id="f-gold" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Varnish</label>
+                            <input id="f-varnish" type="number" value="0" min="0" step="0.001" oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Transparent Base</label>
+                            <input id="f-transparent_base" type="number" value="0" min="0" step="0.001"
+                                oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Fluor Pink</label>
+                            <input id="f-fluor_pink" type="number" value="0" min="0" step="0.001"
+                                oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Fluor Yellow</label>
+                            <input id="f-fluor_yellow" type="number" value="0" min="0" step="0.001"
+                                oninput="onColorInput()">
+                        </div>
+                        <div class="form-group"><label>Rubine Red</label>
+                            <input id="f-rubine_red" type="number" value="0" min="0" step="0.001"
+                                oninput="onColorInput()">
+                        </div>
+                    </div>
 
-                        <!-- LAB VALUES -->
-                        <div style="margin-top:22px;margin-bottom:14px;padding-bottom:10px;
+                    <!-- LAB VALUES -->
+                    <div style="margin-top:22px;margin-bottom:14px;padding-bottom:10px;
                     border-bottom:1px solid var(--border);font-size:0.82rem;font-weight:700;
                     color:var(--text-3);text-transform:uppercase;letter-spacing:0.8px">
-                            🔬 Lab Values (optional — from spectrophotometer)
-                        </div>
+                        🔬 Lab Values (optional — from spectrophotometer)
+                    </div>
 
-                        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
-                            <div class="form-group">
-                                <label>L* (Lightness 0–100)</label>
-                                <input id="f-lab_l" type="number" step="0.01" min="0" max="100" placeholder="e.g. 52.4"
-                                    oninput="onColorInput()">
-                            </div>
-                            <div class="form-group">
-                                <label>a* (Green–Red)</label>
-                                <input id="f-lab_a" type="number" step="0.01" min="-128" max="127"
-                                    placeholder="e.g. 44.2" oninput="onColorInput()">
-                            </div>
-                            <div class="form-group">
-                                <label>b* (Blue–Yellow)</label>
-                                <input id="f-lab_b" type="number" step="0.01" min="-128" max="127"
-                                    placeholder="e.g. 28.6" oninput="onColorInput()">
-                            </div>
+                    <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
+                        <div class="form-group">
+                            <label>L* (Lightness 0–100)</label>
+                            <input id="f-lab_l" type="number" step="0.01" min="0" max="100" placeholder="e.g. 52.4"
+                                oninput="onColorInput()">
                         </div>
+                        <div class="form-group">
+                            <label>a* (Green–Red)</label>
+                            <input id="f-lab_a" type="number" step="0.01" min="-128" max="127" placeholder="e.g. 44.2"
+                                oninput="onColorInput()">
+                        </div>
+                        <div class="form-group">
+                            <label>b* (Blue–Yellow)</label>
+                            <input id="f-lab_b" type="number" step="0.01" min="-128" max="127" placeholder="e.g. 28.6"
+                                oninput="onColorInput()">
+                        </div>
+                    </div>
 
-                        <!-- MATCH MODE BUTTONS -->
-                        <div style="margin-top:22px;margin-bottom:4px;font-size:0.82rem;font-weight:700;
+                    <!-- MATCH MODE BUTTONS -->
+                    <div style="margin-top:22px;margin-bottom:4px;font-size:0.82rem;font-weight:700;
                     color:var(--text-3);text-transform:uppercase;letter-spacing:0.8px">
-                            Best Match Mode
-                        </div>
-                        <div style="display:flex;gap:10px;margin-bottom:4px">
-                            <button id="btn-match-ratio" class="btn btn-primary" type="button"
-                                onclick="setMatchMode('ratio')">
-                                📊 Ratio Match
-                            </button>
-                            <button id="btn-match-deltae" class="btn btn-ghost" type="button"
-                                onclick="setMatchMode('deltae')">
-                                🔬 Delta E Match
-                            </button>
-                        </div>
-                        <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:16px">
-                            Ratio: compares ink component ratios with perceptual weights &nbsp;|&nbsp;
-                            Delta E: CIE 2000 perceptual color difference (requires Lab values)
-                        </div>
-
-                        <!-- BEST MATCH RESULT -->
-                        <div id="match-box" style="display:none"></div>
-
-                        <!-- SAVE -->
-                        <div class="btn-row" style="margin-top:20px">
-                            <button class="btn btn-primary" id="save-btn" onclick="saveFormula()">💾 Save
-                                Formula</button>
-                            <button class="btn btn-ghost" onclick="resetForm()">Clear</button>
-                        </div>
-
+                        Best Match Mode
                     </div>
+                    <div style="display:flex;gap:10px;margin-bottom:4px">
+                        <button id="btn-match-ratio" class="btn btn-primary" type="button"
+                            onclick="setMatchMode('ratio')">
+                            📊 Ratio Match
+                        </button>
+                        <button id="btn-match-deltae" class="btn btn-ghost" type="button"
+                            onclick="setMatchMode('deltae')">
+                            🔬 Delta E Match
+                        </button>
+                    </div>
+                    <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:16px">
+                        Ratio: compares ink component ratios with perceptual weights &nbsp;|&nbsp;
+                        Delta E: CIE 2000 perceptual color difference (requires Lab values)
+                    </div>
+
+                    <!-- BEST MATCH RESULT -->
+                    <div id="match-box" style="display:none"></div>
+
+                    <!-- SAVE -->
+                    <div class="btn-row" style="margin-top:20px">
+                        <button class="btn btn-primary" id="save-btn" onclick="saveFormula()">💾 Save
+                            Formula</button>
+                        <button class="btn btn-ghost" onclick="resetForm()">Clear</button>
+                    </div>
+
                 </div>
             </div>
+        </div>
 
-            <!-- ARCHIVE -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span class="panel-title">Formula Archive</span>
-                    <button class="btn btn-ghost" onclick="loadFormulas()">↺ Refresh</button>
-                </div>
-                <div style="padding:16px 20px 0">
-                    <div class="search-bar">
-                        <input id="search-input" placeholder="Search by code or name..." oninput="filterFormulas()">
-                    </div>
-                </div>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-
-                                        <th>Name</th>
-                                        <th>Drum</th>
-                                        <th>Components</th>
-                                        <th>Returned</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                            </tr>
-                        </thead>
-                        <tbody id="formulas-tbody">
-                            <tr class="empty-row">
-                                <td colspan="7">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <!-- ARCHIVE -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">Formula Archive</span>
+                <button class="btn btn-ghost" onclick="loadFormulas()">↺ Refresh</button>
+            </div>
+            <div style="padding:16px 20px 0">
+                <div class="search-bar">
+                    <input id="search-input" placeholder="Search by code or name..." oninput="filterFormulas()">
                 </div>
             </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+
+                                    <th>Name</th>
+                                    <th>Drum</th>
+                                    <th>Components</th>
+                                    <th>Returned</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                        </tr>
+                    </thead>
+                    <tbody id="formulas-tbody">
+                        <tr class="empty-row">
+                            <td colspan="7">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
 
     <div id="toast" class="toast"></div>
