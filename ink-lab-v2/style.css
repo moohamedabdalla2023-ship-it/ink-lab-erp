@@ -957,112 +957,122 @@ nav::-webkit-scrollbar {
 /* =========================
    MOBILE
 ========================= */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 60px;
 
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
 
+/* الحاوية الرئيسية للموبايل */
+.mobile-container {
+    max-width: 480px;
+    margin: 0 auto;
     background: #0f172a;
-    border-top: 1px solid #1e293b;
-    z-index: 999;
+    /* نفس طابع الألوان الغامق الاحترافي */
+    color: #f8fafc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 16px;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
-.bottom-nav a {
+/* العناوين الرئيسية */
+.app-header {
+    text-align: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #1e293b;
+    margin-bottom: 20px;
+}
+
+.app-header h1 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #3b82f6;
+    /* اللون الأزرق المميز */
+    margin: 0;
+}
+
+/* مجموعات الإدخال الكبيرة والمريحة للمس */
+.form-group-mobile {
+    margin-bottom: 16px;
+}
+
+.form-group-mobile label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+.form-group-mobile input,
+.form-group-mobile select {
+    width: 100%;
+    padding: 14px;
+    /* مساحة كبيرة مريحة للضغط */
+    font-size: 1rem;
+    background: #1e293b;
+    border: 1.5px solid #334155;
+    border-radius: 12px;
+    color: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.form-group-mobile input:focus {
+    border-color: #3b82f6;
+    outline: none;
+}
+
+/* شبكة مرنة لإدخال قيم Lab (3 أعمدة بجانب بعضها في الموبايل) */
+.lab-grid-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+/* أزرار الموبايل الاحترافية */
+.btn-mobile {
+    width: 100%;
+    padding: 16px;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-
-    color: #94a3b8;
-    text-decoration: none;
-    font-size: 10px;
+    gap: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.bottom-nav a span {
-    font-size: 9px;
-    margin-top: 2px;
+.btn-mobile-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
 }
 
-.bottom-nav a.active {
-    color: #22c55e;
+.btn-mobile-secondary {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #f1f5f9;
+    margin-top: 10px;
 }
 
-@media (max-width: 768px) {
-
-    .table-wrap {
-        width: 100%;
-        overflow: hidden;
-    }
-
-    table {
-        width: 100%;
-        min-width: 100%;
-        table-layout: fixed;
-    }
-
-    th,
-    td {
-        padding: 6px 4px !important;
-        font-size: 11px !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .td-code {
-        font-size: 10px !important;
-    }
-
-    .btn {
-        padding: 4px 6px !important;
-        font-size: 10px !important;
-    }
-
-    .td-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-}
-
-body {
-    margin: 0;
-    font-family: Arial;
-    background: #0b1220;
-    color: #fff;
-}
-
-.app {
+/* تبديل أوضاع المطابقة (Ratio / Delta E) بشكل أزرار الأبليكيشن (Segmented Control) */
+.mode-selector {
     display: flex;
+    background: #1e293b;
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 20px;
 }
 
-.sidebar {
-    width: 200px;
-    background: #111827;
-    height: 100vh;
-    padding: 10px;
-}
-
-.sidebar button {
-    width: 100%;
-    margin: 5px 0;
-    padding: 10px;
-    background: #1f2937;
-    border: 0;
-    color: #fff;
-    cursor: pointer;
-}
-
-.content {
+.mode-tab {
     flex: 1;
-    padding: 20px;
-}
-
-.page {
+    text-align: center;
     padding: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s;
 }
