@@ -33,7 +33,7 @@
             <a href="formulas.html" class="active">Formulas</a>
             <a href="batches.html">Batches</a>
             <a href="stock.html">Stock</a>
-            <a href="drums.html">Drums</a>
+
         </nav>
         <div class="header-right">
             <div class="status-bar">
@@ -56,140 +56,249 @@
 
         </div>
 
-        </div>
         <div class="ink-calc-mobile-container"
-            style="max-width: 480px; margin: 0 auto; background: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; padding: 16px; min-height: 100vh; box-sizing: border-box;">
+            style="max-width:480px;margin:0 auto;background:#0f172a;color:#f8fafc;font-family:system-ui,-apple-system,sans-serif;padding:16px;box-sizing:border-box;">
 
-            <div style="text-align: center; padding: 12px 0; border-bottom: 1px solid #1e293b; margin-bottom: 20px;">
-                <h1 style="font-size: 1.25rem; font-weight: 800; color: #3b82f6; margin: 0;">Flexo Ink Calculator
+            <div style="text-align:center;padding:12px 0;border-bottom:1px solid #1e293b;margin-bottom:20px;">
+                <h1 style="font-size:1.25rem;font-weight:800;color:#3b82f6;margin:0;">
+                    Flexo Ink Calculator
                 </h1>
-                <p style="font-size: 0.75rem; color: #64748b; margin: 4px 0 0 0;">Solvent-Based Ink Estimation</p>
+                <p style="font-size:.75rem;color:#3888f7;margin:4px 0 0 0;">
+                    Solvent-Based Ink Estimation
+                </p>
             </div>
 
-            <div style="display: flex; background: #1e293b; padding: 4px; border-radius: 12px; margin-bottom: 20px;">
-                <div id="tab-pieces" onclick="switchCalcMode('pieces')"
-                    style="flex: 1; text-align: center; padding: 12px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: #3b82f6; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                    📦 Label (Pieces)
+            <!-- Tabs -->
+            <div style="display:flex;background:#1e293b;padding:4px;border-radius:12px;margin-bottom:20px;gap:4px;">
+
+                <div id="tab-linear" onclick="switchCalcMode('linear')"
+                    style="flex:1;text-align:center;padding:12px;font-size:.85rem;font-weight:600;border-radius:8px;cursor:pointer;background:#3b82f6;color:#fff;">
+                    📏 Linear
                 </div>
+
                 <div id="tab-weight" onclick="switchCalcMode('weight')"
-                    style="flex: 1; text-align: center; padding: 12px; font-size: 0.88rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; color: #94a3b8;">
-                    ⚖️ Shrink (Weight)
+                    style="flex:1;text-align:center;padding:12px;font-size:.85rem;font-weight:600;border-radius:8px;cursor:pointer;color:#94a3b8;">
+                    ⚖️ Weight
                 </div>
+
+                <div id="tab-pieces" onclick="switchCalcMode('pieces')"
+                    style="flex:1;text-align:center;padding:12px;font-size:.85rem;font-weight:600;border-radius:8px;cursor:pointer;color:#94a3b8;">
+                    📦 Pieces
+                </div>
+
             </div>
 
             <form id="flexo-calc-form" oninput="runLiveCalculation()">
 
-                <div id="section-pieces">
-                    <div style="margin-bottom: 14px;">
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Total
-                            Pieces (Count)</label>
-                        <input type="number" id="in-pieces" value="50000" placeholder="e.g. 50000"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                <!-- Linear -->
+                <div id="section-linear">
+
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Length (m)
+                        </label>
+
+                        <input type="number" id="in-length-meter" value="10000"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;box-sizing:border-box;">
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                        <div>
-                            <label
-                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Length
-                                (mm)</label>
-                            <input type="number" id="in-length" value="150" placeholder="mm"
-                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
-                        </div>
-                        <div>
-                            <label
-                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Width
-                                (mm)</label>
-                            <input type="number" id="in-width" value="100" placeholder="mm"
-                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
-                        </div>
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Width (mm)
+                        </label>
+
+                        <input type="number" id="in-width-meter" value="800"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;box-sizing:border-box;">
                     </div>
+
                 </div>
 
-                <div id="section-weight" style="display: none;">
-                    <div style="margin-bottom: 14px;">
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Film
-                            Weight (KG)</label>
-                        <input type="number" id="in-film-weight" value="1000" placeholder="e.g. 1000"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                <!-- Weight -->
+                <div id="section-weight" style="display:none;">
+
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Film Weight (KG)
+                        </label>
+
+                        <input type="number" id="in-film-weight" value="1000"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;box-sizing:border-box;">
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Width (mm)
+                        </label>
+
+                        <input type="number" id="in-width-weight" value="800"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;box-sizing:border-box;">
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:12px;">
+
                         <div>
                             <label
-                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Film
-                                Type</label>
+                                style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                                Film Type
+                            </label>
+
                             <select id="in-film-type"
-                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
-                                <option value="ldpe" selected>LDPE (Density 0.92)</option>
-                                <option value="petg">PET-G (Density 1.32)</option>
-                                <option value="pvc">PVC (Density 1.35)</option>
+                                style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
+
+                                <option value="bopp">BOPP (0.91)</option>
+                                <option value="cpp">CPP (0.90)</option>
+                                <option value="ldpe">LDPE (0.92)</option>
+                                <option value="hdpe">HDPE (0.95)</option>
+                                <option value="pet">PET (1.39)</option>
+                                <option value="pvc">PVC (1.35)</option>
+
                             </select>
                         </div>
+
                         <div>
                             <label
-                                style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Thickness
-                                (μm)</label>
-                            <input type="number" id="in-micron" value="50" placeholder="Micron"
-                                style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                                style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                                Thickness (μm)
+                            </label>
+
+                            <input type="number" id="in-micron" value="50"
+                                style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
                         </div>
+
                     </div>
+
                 </div>
 
-                <div style="border-top: 1px dashed #334155; margin: 20px 0; padding-top: 16px;"></div>
+                <!-- Pieces -->
+                <div id="section-pieces" style="display:none;">
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
-                    <div>
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Coverage
-                            %</label>
-                        <input type="number" id="in-coverage" value="40" placeholder="%"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Total Pieces
+                        </label>
+
+                        <input type="number" id="in-pieces" value="50000"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
                     </div>
-                    <div>
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Anilox
-                            Vol (cm³/m²)</label>
-                        <input type="number" id="in-anilox-volume" value="6.0" step="0.1" placeholder="cm³/m²"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+                        <div>
+                            <label
+                                style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                                Repeat Length (mm)
+                            </label>
+
+                            <input type="number" id="in-length" value="150"
+                                style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
+                        </div>
+
+                        <div>
+                            <label
+                                style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                                Width (mm)
+                            </label>
+
+                            <input type="number" id="in-width" value="100"
+                                style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
+                        </div>
+
                     </div>
+
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                <div style="border-top:1px dashed #334155;margin:20px 0;padding-top:16px;"></div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+
                     <div>
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Ink
-                            Density (g/cm³)</label>
-                        <input type="number" id="in-density" value="1.0" step="0.01"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Coverage %
+                        </label>
+
+                        <input type="number" id="in-coverage" value="40"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
                     </div>
+
                     <div>
-                        <label
-                            style="display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px;">Washing/Waste
-                            %</label>
-                        <input type="number" id="in-waste" value="10"
-                            style="width: 100%; padding: 14px; font-size: 1rem; background: #1e293b; border: 1.5px solid #334155; border-radius: 12px; color: #fff; box-sizing: border-box;">
+                        <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                            Anilox (cm³/m²)
+                        </label>
+
+                        <input type="number" id="in-anilox-volume" value="6" step="0.1"
+                            style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
                     </div>
+
                 </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;font-size:.8rem;font-weight:600;color:#94a3b8;margin-bottom:6px;">
+                        Solvent % (dilution before printing)
+                    </label>
+
+                    <input type="number" id="in-solvent" value="10"
+                        style="width:100%;padding:14px;background:#1e293b;border:1.5px solid #334155;border-radius:12px;color:#fff;">
+                </div>
+
             </form>
 
             <div id="result-card"
-                style="background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #3b82f6; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);">
-                <div
-                    style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px;">
-                    Total Ink Required</div>
-                <div id="out-ink-weight"
-                    style="font-size: 2.25rem; font-weight: 900; color: #10b981; line-height: 1.2;">0.000
-                    KG</div>
+                style="background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid #3b82f6;border-radius:16px;padding:16px;text-align:center;box-shadow:0 10px 15px -3px rgba(0,0,0,.3);">
 
                 <div
-                    style="display: flex; justify-content: space-between; border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px; font-size: 0.8rem; color: #94a3b8;">
+                    style="font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:4px;">
+                    Concentrated Ink Required
+                </div>
+
+                <div id="out-ink-weight" style="font-size:2.25rem;font-weight:900;color:#10b981;line-height:1.2;">
+                    0.000 KG
+                </div>
+
+                <div id="out-calc-warning"
+                    style="display:none;font-size:.78rem;color:#fbbf24;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;padding:8px 10px;margin-top:10px;">
+                </div>
+
+                <div
+                    style="display:flex;justify-content:space-between;border-top:1px solid #334155;margin-top:12px;padding-top:12px;font-size:.8rem;color:#94a3b8;">
                     <span>Calculated Area:</span>
-                    <strong id="out-total-area" style="color: #fff;">0 m²</strong>
+                    <strong id="out-total-area" style="color:#fff;">
+                        0 m²
+                    </strong>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.8rem;color:#94a3b8;">
+                    <span>Ink per m²:</span>
+                    <strong id="out-ink-per-m2" style="color:#fff;">
+                        — g/m²
+                    </strong>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.8rem;color:#94a3b8;">
+                    <span>Total diluted ink (incl. solvent):</span>
+                    <strong id="out-ink-diluted" style="color:#fff;">
+                        0.000 KG
+                    </strong>
+                </div>
+
+                <div id="out-ink-per-piece-row"
+                    style="display:none;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed #334155;font-size:.8rem;color:#94a3b8;">
+                    <span>Ink per label/piece:</span>
+                    <strong id="out-ink-per-piece" style="color:#fbbf24;">
+                        0 g
+                    </strong>
+                </div>
+
+                <div id="out-ink-per-kg-film-row"
+                    style="display:none;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed #334155;font-size:.8rem;color:#94a3b8;">
+                    <span>Ink per 1 kg of film:</span>
+                    <strong id="out-ink-per-kg-film" style="color:#fbbf24;">
+                        0 g/kg
+                    </strong>
                 </div>
             </div>
+
         </div>
+
         <!-- ADD FORMULA -->
         <div class="panel">
             <div class="panel-header">
@@ -279,11 +388,11 @@
                             <input id="f-fluor_pink" type="number" value="0" min="0" step="0.001"
                                 oninput="onColorInput()">
                         </div>
-                        <div class="form-group"><label>Fluor Yellow</label>
+                        <div class="form-group"><label>Orange</label>
                             <input id="f-fluor_yellow" type="number" value="0" min="0" step="0.001"
                                 oninput="onColorInput()">
                         </div>
-                        <div class="form-group"><label>Rubine Red</label>
+                        <div class="form-group"><label>Warm Red</label>
                             <input id="f-rubine_red" type="number" value="0" min="0" step="0.001"
                                 oninput="onColorInput()">
                         </div>
@@ -363,18 +472,13 @@
                 <table>
                     <thead>
                         <tr>
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-
-                                    <th>Name</th>
-                                    <th>Drum</th>
-                                    <th>Components</th>
-                                    <th>Returned</th>
-                                    <th>Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Drum</th>
+                            <th>Components</th>
+                            <th>Returned</th>
+                            <th>Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="formulas-tbody">
@@ -412,7 +516,7 @@
         </div>
     </div>
     <script src="config.js"></script>
-    <script src="formulas.js?v=1"></script>
+    <script src="formulas.js?v=2"></script>
     <script src="pdf.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -425,6 +529,3 @@
 </body>
 
 </html>
-<script>
-    console.log("TEST INLINE SCRIPT WORKS");
-</script>

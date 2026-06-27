@@ -23,7 +23,18 @@
         <div class="logo-wrap">
             <div class="logo-icon">⬡</div>
             <div>
-                <h1>INK LAB</h1>
+                <h1 style="
+                font-size:1rem;
+                font-weight:300;
+                letter-spacing:2px;
+                margin:0;
+                line-height:1.1;
+            ">
+                    <span style="color:#dc2626;">3</span><span style="color:#16a34a;">P</span>
+                    <span style="color:#f8fafc;"> INK LAB</span>
+                </h1>
+                Professional Flexographic Ink Management System
+                </p>
                 <span class="subtitle">ERP SYSTEM V2</span>
             </div>
         </div>
@@ -40,22 +51,16 @@
                     <span>Formulas</span>
                 </a>
 
-                <a href="stock.html">
-                    📦
-                    <span>Stock</span>
+
                 </a>
 
                 <a href="batches.html">
                     📊
                     <span>Batches</span>
                 </a>
-                <a href="consumption.html">
-                    📉
-                    <span>Consumption</span>
+
                 </a>
-                <a href="drums.html">
-                    🥁
-                    <span>Drums</span>
+
                 </a>
 
             </div>
@@ -226,103 +231,14 @@
 
 <body>
 
-    <h2>Ink Consumption System</h2>
-
-    <input type="date" id="date">
-    <input type="text" id="order_no" placeholder="Order No">
-    <input type="text" id="supplier" placeholder="Supplier">
-
-    <br><br>
-
-    <select id="color">
-        <option>Cyan</option>
-        <option>Magenta</option>
-        <option>Yellow</option>
-        <option>Black</option>
-    </select>
-
-    <input type="number" id="qty" placeholder="Qty">
-    <input type="number" id="price" placeholder="Price">
-
-    <button onclick="saveData()">Save</button>
-
-    <h3>Records</h3>
-
-    <table border="1" width="100%">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Order</th>
-                <th>Supplier</th>
-                <th>Color</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Cost</th>
-            </tr>
-        </thead>
-
-        <tbody id="table"></tbody>
-    </table>
 
     <script src="app.js"></script>
     <div class="app">
 
-        <div class="sidebar">
-            <h3>INK ERP</h3>
-
-            <button onclick="showPage('home')">Home</button>
-            <button onclick="showPage('consumption')">Consumption</button>
-        </div>
 
         <div class="content">
 
-            <!-- HOME -->
-            <div id="home" class="page">
-                <h2>Welcome</h2>
-                <p>ERP Dashboard</p>
-            </div>
 
-            <!-- CONSUMPTION -->
-            <div id="consumption" class="page" style="display:none">
-
-                <h2>Ink Consumption</h2>
-
-                <input type="date" id="date">
-                <input type="text" id="order_no" placeholder="Order No">
-                <input type="text" id="supplier" placeholder="Supplier">
-
-                <select id="color">
-                    <option>Cyan</option>
-                    <option>Magenta</option>
-                    <option>Yellow</option>
-                    <option>Black</option>
-                    <option>White</option>
-                    <option>Red</option>
-                    <option>Orange</option>
-                </select>
-
-                <input type="number" id="qty" placeholder="Qty">
-                <input type="number" id="price" placeholder="Price">
-
-                <button onclick="add()">Add</button>
-
-                <table border="1" width="100%">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Order</th>
-                            <th>Supplier</th>
-                            <th>Color</th>
-                            <th>Qty</th>
-                            <th>Price</th>
-                            <th>Cost</th>
-                        </tr>
-                    </thead>
-
-                    <tbody id="table"></tbody>
-                </table>
-
-            </div>
 
         </div>
 

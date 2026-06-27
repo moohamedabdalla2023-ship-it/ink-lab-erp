@@ -13,7 +13,7 @@ const COLOR_LABELS = {
     black:"Black", white:"White", reflex_blue:"Reflex Blue",
     violet:"Violet", green:"Green", silver:"Silver", gold:"Gold",
     varnish:"Varnish", transparent_base:"Transparent Base",
-    fluor_pink:"Fluor Pink", fluor_yellow:"Fluor Yellow", rubine_red:"Rubine Red"
+    fluor_pink:"Fluor Pink", fluor_yellow:"Orange", rubine_red:"Warm Red"
 };
 
 const INK_KS = {
@@ -91,6 +91,10 @@ const COLOR_WEIGHT = {
     varnish:0.1, transparent_base:0.1, fluor_pink:2.0, fluor_yellow:1.4, rubine_red:2.3
 };
 const INK_STRENGTH = COLOR_WEIGHT;
+
+// Delta E acceptance threshold used by the Delta E match engine.
+// Any candidate whose Delta E is greater than this value is excluded.
+const MAX_ACCEPTABLE_DELTA_E = 4;
 
 let allFormulas = [];
 let formOpen = false;
@@ -238,7 +242,7 @@ function checkPantoneMatch() {
         </div>
     `;
 }
-    
+
 
 
 function getWeightedProfile(f) {
@@ -415,8 +419,8 @@ function getCluster(f) {
         violet: { name: "Violet Family", icon: "Violet", color: "#8b5cf6" },
         green: { name: "Green Family", icon: "Green", color: "#22c55e" },
         fluor_pink: { name: "Fluorescent Pink", icon: "Pink", color: "#f472b6" },
-        fluor_yellow: { name: "Fluorescent Yellow", icon: "Fluor Yellow", color: "#facc15" },
-        rubine_red: { name: "Red Family", icon: "Red", color: "#ef4444" }
+        fluor_yellow: { name: "Orange Family", icon: "Orange", color: "#facc15" },
+        rubine_red: { name: "Warm Red Family", icon: "Warm Red", color: "#ef4444" }
     };
 
     return clusterMap[dominant] || { name: "Mixed", icon: "Mixed", color: "#6393ff" };
@@ -438,17 +442,18 @@ function setMatchMode(mode) {
 
     runMatch();
 }
+
 function runMatch() {
     const box = document.getElementById("match-box");
     if (!box) return;
 
-    const currentInputFormula = readForm(); // جلب البيانات المكتوبة في الفورم الآن
+    const currentInputFormula = readForm();
 
     if (matchMode === "ratio") {
         runRatioMatch(currentInputFormula, box);
     }
     if (matchMode === "deltae") {
-        runDeltaEMatch(currentInputFormula, box); 
+        runDeltaEMatch(currentInputFormula, box);
     }
 }
 
@@ -457,10 +462,8 @@ function onColorInput() {
     matchTimer = setTimeout(runMatch, 350);
 }
 
-
 async function getFormulaStock(formulaId) {
     try {
-        // Use dbGet — already has HEADERS from config.js
         const batches = await dbGet("batches",
             `?formula_id=eq.${formulaId}&select=target_kg,returned_kg`
         );
@@ -531,43 +534,31 @@ function renderStockBadge(formulaId, containerId) {
     });
 }
 
+// ──────────────────────────────────────────────────────────────
+// RATIO MATCH ENGINE
+// Compares ink component ratios (weighted by perceptual strength)
+// between the formula being entered and every existing formula,
+// and surfaces the closest one. Independent of Delta E threshold.
+// ──────────────────────────────────────────────────────────────
 function runRatioMatch(newF, box) {
     const hasInk = COLORS.some(c => newF[c] > 0);
-    if (!hasInk || !allFormulas.length) { box.style.display = "none"; return; }
+    if (!hasInk || !allFormulas.length) { box.style.display = "none"; return null; }
 
     const results = allFormulas
-    .filter(ex => ex.code !== newF.code && ex.lab_l !== null)
-    .map(ex => ({
-        f: ex,
-        de: parseFloat(
-            deltaE2000(
-                newF.lab_l,
-                newF.lab_a,
-                newF.lab_b,
-                ex.lab_l,
-                ex.lab_a,
-                ex.lab_b
-            ).toFixed(2)
-        )
-    }))
-    .sort((a, b) => a.de - b.de)
-.slice(0, 5);
-   
+        .filter(ex => ex.code !== newF.code)
+        .map(ex => ({ f: ex, score: calcRatioScore(newF, ex) }))
+        .filter(r => r.score >= 20)
+        .sort((a,b) => b.score - a.score);
 
-   if (!results.length) {
-    box.style.display = "block";
-    box.innerHTML = `
-        <div style="padding:20px;text-align:center">
-            No acceptable match found (ΔE > 4)
-        </div>`;
-    return null;
-}
+    if (!results.length) { box.style.display = "none"; return null; }
+
     const best = results[0];
-    const color = score <= 1 ? "var(--danger)"
-    : score <= 2 ? "var(--warn)"
-    : score <= 4 ? "var(--accent)"
-    : "var(--green)";
-     
+    const score = best.score;
+    const color = score >= 85 ? "var(--danger)" : score >= 65 ? "var(--warn)" : "var(--accent)";
+    const label = score >= 85 ? "Very High - Consider Reusing"
+        : score >= 65 ? "High Similarity"
+        : score >= 40 ? "Possible Match"
+        : "Low Similarity";
     const d1 = newF.drum_kg || 20;
     const d2 = best.f.drum_kg || 20;
     const simNew = simulateMixedLab(newF);
@@ -575,36 +566,35 @@ function runRatioMatch(newF, box) {
     const simDE = deltaE2000(simNew.L, simNew.a, simNew.b, simBest.L, simBest.a, simBest.b);
 
     const compRows = COLORS
-    .filter(c => (newF[c] || 0) > 0 || (best.f[c] || 0) > 0)
-    .map(c => {
-        const r1 = (newF[c] || 0) / d1 * 100;
-        const r2 = (best.f[c] || 0) / d2 * 100;
-        const diff = Math.abs(r1 - r2);
-        const exact = diff < 0.5;
-        const ok = diff <= 5;
-        const bg = exact ? "rgba(34,197,94,0.15)" : ok ? "rgba(99,147,255,0.12)" : "rgba(234,179,8,0.15)";
-        const col = exact ? "var(--green)" : ok ? "var(--accent)" : "var(--warn)";
-        const txt = exact ? "Match" : `Δ ${diff.toFixed(1)}%`;
-        
-        // تصميم مرن يناسب الموبايل تماماً بدلاً من الصف العريض
-        return `
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 700; color: #fff; font-size: 0.9rem;">${COLOR_LABELS[c]}</span>
-                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; background:${bg}; color:${col}">${txt}</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
-                <div>
-                    <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">NEW FORMULA</span>
-                    <strong style="color: var(--accent); font-family: var(--mono);">${r1.toFixed(2)}%</strong>
+        .filter(c => (newF[c] || 0) > 0 || (best.f[c] || 0) > 0)
+        .map(c => {
+            const r1 = (newF[c] || 0) / d1 * 100;
+            const r2 = (best.f[c] || 0) / d2 * 100;
+            const diff = Math.abs(r1 - r2);
+            const exact = diff < 0.5;
+            const ok = diff <= 5;
+            const bg = exact ? "rgba(34,197,94,0.15)" : ok ? "rgba(99,147,255,0.12)" : "rgba(234,179,8,0.15)";
+            const col = exact ? "var(--green)" : ok ? "var(--accent)" : "var(--warn)";
+            const txt = exact ? "Match" : `Δ ${diff.toFixed(1)}%`;
+            return `
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 700; color: #fff; font-size: 0.9rem;">${COLOR_LABELS[c]}</span>
+                    <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; background:${bg}; color:${col}">${txt}</span>
                 </div>
-                <div style="border-left: 1px solid var(--border); padding-left: 8px;">
-                    <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">TARGET</span>
-                    <strong style="color: var(--text-2); font-family: var(--mono);">${r2.toFixed(2)}%</strong>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.15); padding: 8px; border-radius: 6px; font-size: 0.8rem;">
+                    <div>
+                        <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">NEW FORMULA</span>
+                        <strong style="color: var(--accent); font-family: var(--mono);">${r1.toFixed(2)}%</strong>
+                    </div>
+                    <div style="border-left: 1px solid var(--border); padding-left: 8px;">
+                        <span style="color: var(--text-3); display: block; font-size: 0.68rem; margin-bottom: 2px;">TARGET</span>
+                        <strong style="color: var(--text-2); font-family: var(--mono);">${r2.toFixed(2)}%</strong>
+                    </div>
                 </div>
-            </div>
-        </div>`;
-    }).join("");
+            </div>`;
+        }).join("");
+
     const corrHTML = getCorrections(newF, best.f).slice(0, 5).map(c => {
         const sign = c.diff > 0 ? "+" : "";
         const col = c.diff > 0 ? "var(--green)" : "var(--danger)";
@@ -655,12 +645,7 @@ function runRatioMatch(newF, box) {
             </div>
             <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
                 <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Weighted Component Comparison</div>
-                <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden">
-                    <table>
-                        <thead><tr><th>Material</th><th>New Formula %</th><th>${htmlEscape(best.f.code)} %</th><th style="text-align:center">Diff</th></tr></thead>
-                        <tbody>${compRows}</tbody>
-                    </table>
-                </div>
+                ${compRows}
             </div>
             ${corrHTML ? `<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Auto-Suggest: Adjust to match ${htmlEscape(best.f.code)}</div>${corrHTML}</div>` : ""}
             ${others ? `<div style="padding:14px 18px"><div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Other Matches</div>${others}</div>` : ""}
@@ -670,161 +655,24 @@ function runRatioMatch(newF, box) {
             </div>
         </div>`;
     renderStockBadge(best.f.id, "match-stock-ratio");
-   return {
-    best: {
-        f: best.f,
-        score: best.score
-    }
-};
-}
-// ==========================================
-// 1. محرك الحسابات الفني المطور لطباعة الفلكسو
-// ==========================================
 
-function calculateFlexoInkAdvanced(mode, params) {
-    let totalAreaM2 = 0;
-
-    // كثافات خامات البلاستيك القياسية (g/cm³)
-    const filmDensities = {
-        'ldpe': 0.92,
-        'petg': 1.32,
-        'pvc': 1.35
-    };
-
-    if (mode === 'pieces') {
-        const lengthM = parseFloat(params.lengthMm) / 1000;
-        const widthM = parseFloat(params.widthMm) / 1000;
-        const count = parseInt(params.pieces) || 0;
-        totalAreaM2 = lengthM * widthM * count;
-    } else if (mode === 'weight') {
-        const filmWeightKg = parseFloat(params.filmWeightKg) || 0;
-        const micron = parseFloat(params.micron) || 0;
-        const filmType = params.filmType || 'ldpe';
-        
-        const filmDensity = filmDensities[filmType] || 0.92;
-
-        if (!filmWeightKg || !micron) return null;
-
-        totalAreaM2 = filmWeightKg / (micron * filmDensity * 0.001);
-    }
-
-    if (totalAreaM2 <= 0) return null;
-
-    // --- الحسبة الفنية المباشرة بوحدة cm³/m² ---
-    
-    // قراءة قيمة الأنالوكس مباشرة كما هي مكتوبة على الأسطوانة
-    const aniloxVolume = parseFloat(params.aniloxVolume) || 0; 
-    
-    // سمك طبقة الحبر الرطب = حجم الأنالوكس × معامل النقل الفعلي (40% على البلاستيك)
-    const wetLayerMicrons = aniloxVolume * 0.40; 
-
-    // نسبة المواد الصلبة المتبقية في حبر السولفنت بعد التبخر (Solid Content = 30%)
-    const solidContentPct = 0.30; 
-
-    const coverageDecimal = parseFloat(params.coveragePct) / 100;
-    const inkDensity = parseFloat(params.density) || 1.0;
-
-    // حساب الوزن الصافي للحبر الجاف/المركز المطلوب بالكيلوجرام
-    let inkKg = (totalAreaM2 * coverageDecimal * wetLayerMicrons * inkDensity * solidContentPct) / 1000;
-
-    // إضافة نسبة الهدر وضبط الماكينة
-    const wasteMultiplier = 1 + (parseFloat(params.wastePct || 10) / 100);
-    inkKg = inkKg * wasteMultiplier;
-
-    return {
-        totalAreaM2: parseFloat(totalAreaM2.toFixed(2)),
-        inkRequiredKg: parseFloat(inkKg.toFixed(3))
-    };
+    return { best: { f: best.f, score: best.score } };
 }
 
-// ==========================================
-// 2. إدارة واجهة المستخدم والتبديل (UI Logic)
-// ==========================================
-
-let currentFlexoMode = 'pieces';
-
-function switchCalcMode(mode) {
-    currentFlexoMode = mode;
-    const tabPieces = document.getElementById('tab-pieces');
-    const tabWeight = document.getElementById('tab-weight');
-    const secPieces = document.getElementById('section-pieces');
-    const secWeight = document.getElementById('section-weight');
-    
-    if (!tabPieces || !tabWeight || !secPieces || !secWeight) return;
-
-    if (mode === 'pieces') {
-        tabPieces.style.background = '#3b82f6';
-        tabPieces.style.color = 'white';
-        tabPieces.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-        tabWeight.style.background = 'transparent';
-        tabWeight.style.color = '#94a3b8';
-        tabWeight.style.boxShadow = 'none';
-        secPieces.style.display = 'block';
-        secWeight.style.display = 'none';
-    } else {
-        tabWeight.style.background = '#3b82f6';
-        tabWeight.style.color = 'white';
-        tabWeight.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-        tabPieces.style.background = 'transparent';
-        tabPieces.style.color = '#94a3b8';
-        tabPieces.style.boxShadow = 'none';
-        secPieces.style.display = 'none';
-        secWeight.style.display = 'block';
-    }
-    runLiveCalculation();
-}
-
-function runLiveCalculation() {
-    const coveragePct = parseFloat(document.getElementById('in-coverage')?.value) || 0;
-    // قراءة الحقل الجديد للأنالوكس
-    const aniloxVolume = parseFloat(document.getElementById('in-anilox-volume')?.value) || 0;
-    const density = parseFloat(document.getElementById('in-density')?.value) || 1.0;
-    const wastePct = parseFloat(document.getElementById('in-waste')?.value) || 0;
-
-    let params = {
-        coveragePct: coveragePct,
-        aniloxVolume: aniloxVolume,
-        density: density,
-        wastePct: wastePct
-    };
-
-    if (currentFlexoMode === 'pieces') {
-        params.pieces = document.getElementById('in-pieces')?.value || 0;
-        params.lengthMm = document.getElementById('in-length')?.value || 0;
-        params.widthMm = document.getElementById('in-width')?.value || 0;
-    } else {
-        params.filmWeightKg = document.getElementById('in-film-weight')?.value || 0;
-        params.micron = document.getElementById('in-micron')?.value || 0;
-        params.filmType = document.getElementById('in-film-type')?.value || 'ldpe';
-    }
-
-    const result = calculateFlexoInkAdvanced(currentFlexoMode, params);
-
-    const outInkWeight = document.getElementById('out-ink-weight');
-    const outTotalArea = document.getElementById('out-total-area');
-
-    if (!outInkWeight || !outTotalArea) return;
-
-    if (result) {
-        outInkWeight.innerText = `${result.inkRequiredKg.toFixed(3)} KG`;
-        outTotalArea.innerText = `${result.totalAreaM2.toLocaleString()} m²`;
-    } else {
-        outInkWeight.innerText = `0 KG`;
-        outTotalArea.innerText = `0 m²`;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    runLiveCalculation();
-});
+// ──────────────────────────────────────────────────────────────
+// DELTA E MATCH ENGINE
+// Reads L*a*b* values live from the form inputs, compares against
+// every formula in the database that has Lab values stored, and
+// only shows matches with Delta E <= MAX_ACCEPTABLE_DELTA_E (4).
+// If nothing qualifies, the box shows a clear "no match" message
+// instead of staying empty/dead.
+// ──────────────────────────────────────────────────────────────
 function runDeltaEMatch(newF, box) {
-    // 1. قراءة القيم مباشرة من عناصر الواجهة (DOM) لضمان عدم التعليق على قيم قديمة
     const inputL = parseFloat(document.getElementById("f-lab_l")?.value);
     const inputA = parseFloat(document.getElementById("f-lab_a")?.value);
     const inputB = parseFloat(document.getElementById("f-lab_b")?.value);
     const currentCode = document.getElementById("f-code")?.value.trim().toUpperCase() || "";
 
-    // التأكد من أن المستخدم أدخل قيم أرقام حقيقية وصحيحة
     const hasLab = Number.isFinite(inputL) && Number.isFinite(inputA) && Number.isFinite(inputB);
 
     if (!hasLab) {
@@ -837,39 +685,32 @@ function runDeltaEMatch(newF, box) {
         return null;
     }
 
-    // 2. تصفية قاعدة البيانات والمقارنة بالقيم الحالية المكتوبة في الـ Inputs
     const results = allFormulas
-        .filter(ex => ex.code !== currentCode && ex.lab_l !== null) // استبعاد الصيغة الحالية التي نعدلها
+        .filter(ex => ex.code !== currentCode && ex.lab_l !== null)
         .map(ex => {
-            // الحساب يتم بناءً على المدخلات الحقيقية اللحظية inputL, inputA, inputB
             const calculatedDE = parseFloat(deltaE2000(inputL, inputA, inputB, ex.lab_l, ex.lab_a, ex.lab_b).toFixed(2));
-            return {
-                f: ex,
-                de: calculatedDE
-            };
+            return { f: ex, de: calculatedDE };
         })
-        .filter(result => result.de <= 4.0) // الشرط الخاص بك: استبعاد أي قيمة أعلى من 4
+        .filter(result => result.de <= MAX_ACCEPTABLE_DELTA_E)
         .sort((a, b) => a.de - b.de);
 
-    // 3. إذا لم يتبقَ أي نتائج تحت الدلتا 4
     if (!results.length) {
         box.style.display = "block";
         box.innerHTML = `
             <div style="padding:24px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface2);text-align:center">
                 <div style="font-weight:700;margin-bottom:6px;font-size:1rem;color:var(--warn)">No Acceptable Match Found</div>
-                <div style="color:var(--text-3);font-size:0.88rem;line-height:1.6">All formulas in database have a color difference (ΔE > 4.0)</div>
+                <div style="color:var(--text-3);font-size:0.88rem;line-height:1.6">All formulas in the database have a color difference greater than ΔE ${MAX_ACCEPTABLE_DELTA_E}</div>
             </div>`;
         return null;
     }
 
     const best = results[0];
     const de = best.de;
-    
+
     const color = de < 1.0 ? "var(--green)" : de < 2.0 ? "var(--accent)" : "var(--warn)";
     const label = de < 1.0 ? "Nearly Identical Color" : de < 2.0 ? "Very Close Match" : "Acceptable Match";
     const pct = Math.max(0, Math.round(100 - de * 12));
 
-    // بناء واجهة مقارنة قيم الـ Lab المستهدفة والملقنة حالياً
     const labComp = [
         { label: "L*", v1: inputL, v2: best.f.lab_l },
         { label: "a*", v1: inputA, v2: best.f.lab_a },
@@ -905,7 +746,7 @@ function runDeltaEMatch(newF, box) {
                 <span style="font-weight:700;font-size:0.95rem;color:${color}">Spectro Delta E Engine</span>
                 <span style="font-size:0.8rem;color:var(--text-3)">${label}</span>
             </div>
-            
+
             <div style="padding:16px 18px;border-bottom:1px solid var(--border)">
                 <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Lab Value Comparison (Current vs Target)</div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
@@ -925,8 +766,8 @@ function runDeltaEMatch(newF, box) {
                 </div>
             </div>
 
-            ${others ? `<div style="padding:14px 18px"><div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Other Acceptable Matches (ΔE ≤ 4)</div>${others}</div>` : ""}
-            
+            ${others ? `<div style="padding:14px 18px"><div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Other Acceptable Matches (ΔE ≤ ${MAX_ACCEPTABLE_DELTA_E})</div>${others}</div>` : ""}
+
             <div style="padding:12px 18px;border-top:1px solid var(--border);background:rgba(0,0,0,0.15);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
                 <span style="font-size:0.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap">Stock Badge:</span>
                 <span id="match-stock-deltae"></span>
@@ -935,10 +776,252 @@ function runDeltaEMatch(newF, box) {
 
     renderStockBadge(best.f.id, "match-stock-deltae");
 
+    return { best: { f: best.f, deltaE: de } };
+}
+
+// ==========================================
+// Flexo ink consumption calculator
+// ==========================================
+//
+// FIXED:
+//  1) Added "linear" mode (was missing entirely — the HTML's
+//     default/first tab called switchCalcMode('linear') but the
+//     JS only knew about 'pieces' and 'weight', so the calculator
+//     did nothing on page load).
+//  2) filmDensities now covers all 6 options in the HTML <select>
+//     (bopp, cpp, ldpe, hdpe, pet, pvc) — previously only 3 of
+//     them were defined (ldpe, petg, pvc) and petg isn't even an
+//     option in the dropdown, while pet/bopp/cpp/hdpe silently
+//     fell back to a wrong density.
+//  3) Ink weight formula replaced with the factory's Excel formula:
+//     ink(g) = area(m²) × coverage% × (anilox volume ÷ 2.5).
+//     This fully replaces the previous area × coverage × anilox ×
+//     density formula — Ink Density and Transfer % fields were
+//     both removed since the ÷2.5 factor already accounts for them.
+// ==========================================
+
+const FILM_DENSITIES = {
+    bopp: 0.91,
+    cpp:  0.90,
+    ldpe: 0.92,
+    hdpe: 0.95,
+    pet:  1.39,
+    pvc:  1.35
+};
+
+function calculateFlexoInkAdvanced(mode, params) {
+    let totalAreaM2 = 0;
+    let singlePieceAreaM2 = null; // only set in 'pieces' mode
+    let orderFilmWeightKg = null; // only set in 'weight' mode
+
+    if (mode === 'linear') {
+        const lengthM = parseFloat(params.lengthM) || 0;
+        const widthM = (parseFloat(params.widthMm) || 0) / 1000;
+        totalAreaM2 = lengthM * widthM;
+
+    } else if (mode === 'pieces') {
+        const repeatM = (parseFloat(params.lengthMm) || 0) / 1000;
+        const widthM = (parseFloat(params.widthMm) || 0) / 1000;
+        const count = parseInt(params.pieces) || 0;
+        singlePieceAreaM2 = repeatM * widthM;
+        totalAreaM2 = singlePieceAreaM2 * count;
+
+    } else if (mode === 'weight') {
+        const filmWeightKg = parseFloat(params.filmWeightKg) || 0;
+        const widthMm = parseFloat(params.widthMm) || 0;
+        const micron = parseFloat(params.micron) || 0;
+        const filmType = params.filmType || 'ldpe';
+        const filmDensity = FILM_DENSITIES[filmType] || 0.92;
+
+        if (!filmWeightKg || !widthMm || !micron) return null;
+
+        orderFilmWeightKg = filmWeightKg;
+
+        // length (m) = weight(kg) * 1,000,000 / (width(mm) * thickness(µm) * density(g/cm³))
+        const lengthM = (filmWeightKg * 1000000) / (widthMm * micron * filmDensity);
+        totalAreaM2 = lengthM * (widthMm / 1000);
+    }
+
+    if (!totalAreaM2 || totalAreaM2 <= 0) return null;
+
+    // ── Clamp inputs to physically sane ranges so a typo can't
+    //    silently produce a nonsense result ──
+    const coverageDecimal  = Math.min(Math.max(parseFloat(params.coveragePct) || 0, 0), 100) / 100;
+    const aniloxVolume     = Math.max(parseFloat(params.aniloxVolume) || 0, 0);          // cm³/m²
+    const solventPct       = Math.min(Math.max(parseFloat(params.solventPct) || 0, 0), 95);
+
+    if (coverageDecimal <= 0 || aniloxVolume <= 0) return null;
+
+    // ── Ink weight formula (matches the factory's Excel sheet) ──
+    // Ink (grams) = area(m²) × coverage% × (anilox volume ÷ 2.5)
+    // The "÷ 2.5" is the factory's fixed anilox-to-ink-weight conversion
+    // factor (it already accounts for transfer efficiency and ink density,
+    // so neither is applied separately here — this fully replaces the old
+    // area × coverage × anilox × density formula).
+    const ANILOX_CONVERSION_FACTOR = 2.5;
+    const dilutedInkGrams = totalAreaM2 * coverageDecimal * (aniloxVolume / ANILOX_CONVERSION_FACTOR);
+    const dilutedInkKg = dilutedInkGrams / 1000;
+
+    // The diluted ink is concentrate + solvent. Subtracting the solvent
+    // fraction leaves just the concentrated stock-ink weight required —
+    // this is the number the calculator reports.
+    let inkKg = dilutedInkKg * (1 - solventPct / 100);
+
+    const inkPerM2Grams = (inkKg * 1000) / totalAreaM2;
+
+    // Grams of concentrated ink per single label/piece (Pieces mode only) —
+    // derived from the same per-m² rate so it stays consistent with
+    // coverage, anilox, and solvent settings.
+    const inkPerPieceGrams = singlePieceAreaM2 !== null
+        ? parseFloat((inkPerM2Grams * singlePieceAreaM2).toFixed(5))
+        : null;
+
+    // Grams of concentrated ink per 1 kg of film weight (Weight mode only) —
+    // i.e. how much ink this order consumes per kilogram of substrate.
+    const inkPerKgFilmGrams = orderFilmWeightKg !== null && orderFilmWeightKg > 0
+        ? parseFloat(((inkKg * 1000) / orderFilmWeightKg).toFixed(4))
+        : null;
+
     return {
-        best: { f: best.f, de: de }
+        totalAreaM2:        parseFloat(totalAreaM2.toFixed(2)),
+        inkRequiredKg:      parseFloat(inkKg.toFixed(4)),
+        inkPerM2Grams:      parseFloat(inkPerM2Grams.toFixed(3)),
+        dilutedInkKg:       parseFloat(dilutedInkKg.toFixed(4)),
+        inkPerPieceGrams:   inkPerPieceGrams,
+        inkPerKgFilmGrams:  inkPerKgFilmGrams
     };
 }
+
+let currentFlexoMode = 'linear';
+
+function switchCalcMode(mode) {
+    currentFlexoMode = mode;
+
+    const tabs = {
+        linear: document.getElementById('tab-linear'),
+        weight: document.getElementById('tab-weight'),
+        pieces: document.getElementById('tab-pieces')
+    };
+    const sections = {
+        linear: document.getElementById('section-linear'),
+        weight: document.getElementById('section-weight'),
+        pieces: document.getElementById('section-pieces')
+    };
+
+    Object.keys(tabs).forEach(key => {
+        const tab = tabs[key];
+        const sec = sections[key];
+        if (!tab || !sec) return;
+
+        const active = key === mode;
+        tab.style.background = active ? '#3b82f6' : 'transparent';
+        tab.style.color = active ? '#fff' : '#94a3b8';
+        tab.style.boxShadow = active ? '0 2px 4px rgba(0,0,0,0.2)' : 'none';
+        sec.style.display = active ? 'block' : 'none';
+    });
+
+    runLiveCalculation();
+}
+
+function runLiveCalculation() {
+    const coveragePct = parseFloat(document.getElementById('in-coverage')?.value) || 0;
+    const aniloxVolume = parseFloat(document.getElementById('in-anilox-volume')?.value) || 0;
+    const solventPct = parseFloat(document.getElementById('in-solvent')?.value) || 0;
+
+    let params = {
+        coveragePct: coveragePct,
+        aniloxVolume: aniloxVolume,
+        solventPct: solventPct
+    };
+
+    if (currentFlexoMode === 'linear') {
+        params.lengthM = document.getElementById('in-length-meter')?.value || 0;
+        params.widthMm = document.getElementById('in-width-meter')?.value || 0;
+
+    } else if (currentFlexoMode === 'pieces') {
+        params.pieces = document.getElementById('in-pieces')?.value || 0;
+        params.lengthMm = document.getElementById('in-length')?.value || 0;
+        params.widthMm = document.getElementById('in-width')?.value || 0;
+
+    } else if (currentFlexoMode === 'weight') {
+        params.filmWeightKg = document.getElementById('in-film-weight')?.value || 0;
+        // Weight mode uses its own dedicated width field (#in-width-weight).
+        // Previously this silently fell back to the Linear or Pieces tab's
+        // width field, which meant switching tabs could change a Weight-mode
+        // result without the user touching anything in that tab.
+        params.widthMm = document.getElementById('in-width-weight')?.value || 0;
+        params.micron = document.getElementById('in-micron')?.value || 0;
+        params.filmType = document.getElementById('in-film-type')?.value || 'ldpe';
+    }
+
+    const result = calculateFlexoInkAdvanced(currentFlexoMode, params);
+
+    const outInkWeight = document.getElementById('out-ink-weight');
+    const outTotalArea = document.getElementById('out-total-area');
+    const outPerM2 = document.getElementById('out-ink-per-m2');
+    const outDiluted = document.getElementById('out-ink-diluted');
+    const outWarning = document.getElementById('out-calc-warning');
+    const outPerPieceRow = document.getElementById('out-ink-per-piece-row');
+    const outPerPiece = document.getElementById('out-ink-per-piece');
+    const outPerKgFilmRow = document.getElementById('out-ink-per-kg-film-row');
+    const outPerKgFilm = document.getElementById('out-ink-per-kg-film');
+
+    if (!outInkWeight || !outTotalArea) return;
+
+    // ── Surface a clear hint when required fields are missing,
+    //    instead of just silently showing zero ──
+    let warningMsg = '';
+    if (!result) {
+        if (aniloxVolume <= 0) warningMsg = 'Enter an Anilox volume greater than 0.';
+        else if (coveragePct <= 0) warningMsg = 'Enter a Coverage % greater than 0.';
+        else if (currentFlexoMode === 'weight') warningMsg = 'Fill in Film Weight, Width and Thickness.';
+        else warningMsg = 'Fill in the dimensions above.';
+    }
+
+    if (result) {
+        outInkWeight.innerText = `${result.inkRequiredKg.toFixed(3)} KG`;
+        outTotalArea.innerText = `${result.totalAreaM2.toLocaleString()} m²`;
+        if (outPerM2) outPerM2.innerText = `${result.inkPerM2Grams.toFixed(2)} g/m²`;
+        if (outDiluted) outDiluted.innerText = `${result.dilutedInkKg.toFixed(3)} KG`;
+        if (outWarning) outWarning.style.display = 'none';
+
+        // Per-label/piece row only applies in Pieces mode
+        if (outPerPieceRow && outPerPiece) {
+            if (currentFlexoMode === 'pieces' && result.inkPerPieceGrams !== null) {
+                outPerPiece.innerText = `${result.inkPerPieceGrams.toFixed(4)} g`;
+                outPerPieceRow.style.display = 'flex';
+            } else {
+                outPerPieceRow.style.display = 'none';
+            }
+        }
+
+        // Per-kg-of-film row only applies in Weight mode
+        if (outPerKgFilmRow && outPerKgFilm) {
+            if (currentFlexoMode === 'weight' && result.inkPerKgFilmGrams !== null) {
+                outPerKgFilm.innerText = `${result.inkPerKgFilmGrams.toFixed(3)} g/kg`;
+                outPerKgFilmRow.style.display = 'flex';
+            } else {
+                outPerKgFilmRow.style.display = 'none';
+            }
+        }
+    } else {
+        outInkWeight.innerText = `0.000 KG`;
+        outTotalArea.innerText = `0 m²`;
+        if (outPerM2) outPerM2.innerText = `— g/m²`;
+        if (outDiluted) outDiluted.innerText = `0.000 KG`;
+        if (outWarning) {
+            outWarning.textContent = warningMsg;
+            outWarning.style.display = 'block';
+        }
+        if (outPerPieceRow) outPerPieceRow.style.display = 'none';
+        if (outPerKgFilmRow) outPerKgFilmRow.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    switchCalcMode('linear');
+});
+
 async function saveFormula() {
     const f = readForm();
     if (!f.code) { showToast("Formula code is required", "warn"); return; }
@@ -947,20 +1030,18 @@ async function saveFormula() {
     const btn = document.getElementById("save-btn");
     btn.disabled = true;
     btn.textContent = "Saving...";
-const duplicatePantone = allFormulas.find(x =>
-    (x.pantone || "").toUpperCase() ===
-    (f.pantone || "").toUpperCase()
-);
-    if (duplicatePantone) {
-
-    alert(
-        `Pantone ${f.pantone} already exists:\n` +
-        duplicatePantone.code
+    const duplicatePantone = allFormulas.find(x =>
+        (x.pantone || "").toUpperCase() ===
+        (f.pantone || "").toUpperCase()
     );
-
-    viewFormula(duplicatePantone.id);
-    return;
-}
+    if (duplicatePantone) {
+        alert(
+            `Pantone ${f.pantone} already exists:\n` +
+            duplicatePantone.code
+        );
+        viewFormula(duplicatePantone.id);
+        return;
+    }
     const result = await dbPost("formulas", f);
 
     btn.disabled = false;
@@ -1004,7 +1085,6 @@ async function loadFormulas() {
 
     allFormulas = data;
 
-    // 🔥 أضف السطر ده
     const batches = await dbGet("batches");
 
     renderTable(data, batches);
@@ -1039,24 +1119,17 @@ function renderTable(data) {
         rows += `
 <tr>
     <td class="td-code">${f.code}</td>
-
     <td style="font-weight:600">${f.name}</td>
-
     <td>${Number(f.drum_kg || 20).toFixed(1)} KG</td>
-
     <td style="color:var(--text-2)">
         ${comps || "-"}
     </td>
-
-    <!-- Returned لازم يكون بعد Components -->
     <td id="tbl-return-${f.id}" style="font-weight:600;color:var(--warn)">
         Loading...
     </td>
-
     <td style="color:var(--text-3)">
         ${f.created_at ? new Date(f.created_at).toLocaleDateString() : "-"}
     </td>
-
     <td class="td-actions">
         <button class="btn btn-ghost" onclick="viewFormula(${f.id})">View</button>
         <button class="btn btn-danger" onclick="deleteFormula(${f.id}, '${f.code}')">Delete</button>
@@ -1067,10 +1140,8 @@ function renderTable(data) {
 
     tbody.innerHTML = rows;
 
-    // تشغيل المرتجع بعد DOM
     requestAnimationFrame(() => {
         loadReturnedValues(data);
-
         console.log(
             "RETURN CELLS:",
             document.querySelectorAll("[id^='tbl-return']").length
@@ -1084,7 +1155,8 @@ async function loadReturnedValues(formulas) {
     formulas.forEach(f => {
 
         const related = batches.filter(b =>
-     String(b.formula_code).trim() === String(f.code).trim()        );
+            String(b.formula_code).trim() === String(f.code).trim()
+        );
 
         const totalReturned = related.reduce((sum, b) =>
             sum + Number(b.returned_kg || 0)
@@ -1296,27 +1368,22 @@ async function renderFormulaBatchList(formulaCode, containerId, detailsId) {
 
         let html = `
             <div class="batch-summary-grid">
-
                 <div class="summary-card">
                     <div class="summary-value">${batches.length}</div>
                     <div class="summary-label">Batches</div>
                 </div>
-
                 <div class="summary-card">
                     <div class="summary-value">${totalProduced.toFixed(1)}</div>
                     <div class="summary-label">Produced KG</div>
                 </div>
-
                 <div class="summary-card">
                     <div class="summary-value">${totalReturned.toFixed(1)}</div>
                     <div class="summary-label">Returned KG</div>
                 </div>
-
                 <div class="summary-card">
                     <div class="summary-value">${availableKg.toFixed(1)}</div>
                     <div class="summary-label">Available KG</div>
                 </div>
-
             </div>
         `;
 
@@ -1328,7 +1395,7 @@ async function renderFormulaBatchList(formulaCode, containerId, detailsId) {
 
             const statusColor = batchStatusColor(batch.status);
 
-           html += `
+            html += `
 <button
     type="button"
     class="btn btn-ghost"
@@ -1349,26 +1416,21 @@ async function renderFormulaBatchList(formulaCode, containerId, detailsId) {
     <div style="font-weight:800;color:var(--accent)">
         ${htmlEscape(batch.batch_no || batch.id)}
     </div>
-
     <div style="font-size:0.82rem;color:var(--text-2)">
         Produced: ${target.toFixed(1)} KG
     </div>
-
     <div style="font-size:0.82rem;color:var(--warn)">
         Returned: ${returned.toFixed(1)} KG
     </div>
-
     <div style="font-size:0.82rem;color:${net > 0 ? "var(--green)" : "#ff4d6a"}">
         Available: ${net.toFixed(1)} KG
     </div>
-
     <div style="font-size:0.75rem;font-weight:700;color:${statusColor}">
         ${htmlEscape(batch.status || "No Status")}
     </div>
-
 </button>
 `;
-            
+
         });
 
         el.innerHTML = html;
@@ -1649,9 +1711,7 @@ function viewFormula(id) {
             </div>
         </div>
         <div class="btn-row">
-           <button class="btn btn-primary" onclick="exportFormulaPDF(${id})">
-  Export PDF
-</button>
+           <button class="btn btn-primary" onclick="exportFormulaPDF(${id})">Export PDF</button>
             <button class="btn btn-ghost" style="color:var(--green);border-color:var(--green)" onclick="convertToProduction(${id})">Convert to Production</button>
             <button class="btn btn-ghost" onclick="closeModal()">Close</button>
         </div>`;
@@ -1671,110 +1731,300 @@ function closeModal() {
 }
 function exportFormulaPDF(id) {
   const formula = allFormulas.find(x => x.id == id);
-
   if (!formula) return alert("Formula not found");
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  // =========================
-  // HEADER 3P COLORS
-  // =========================
-  doc.setFontSize(22);
+  // ── Reference palette for swatches (approximate print-safe RGB per ink) ──
+  const SWATCH_RGB = {
+    cyan:             [0, 159, 218],
+    magenta:          [216, 30, 122],
+    yellow:           [255, 213, 0],
+    black:            [20, 20, 20],
+    white:            [245, 245, 245],
+    reflex_blue:      [0, 47, 108],
+    violet:           [92, 49, 130],
+    green:            [0, 133, 81],
+    silver:           [176, 179, 181],
+    gold:             [188, 152, 70],
+    varnish:          [235, 235, 230],
+    transparent_base: [240, 240, 240],
+    fluor_pink:       [255, 0, 144],
+    fluor_yellow:     [221, 255, 0],
+    rubine_red:       [206, 0, 62]
+  };
 
-  doc.setTextColor(255, 0, 0);
-  doc.text("3", 20, 20);
+  const COLOR_ROWS = [
+    ["cyan", "Cyan"], ["magenta", "Magenta"], ["yellow", "Yellow"], ["black", "Black"],
+    ["white", "White"], ["reflex_blue", "Reflex Blue"], ["violet", "Violet"], ["green", "Green"],
+    ["silver", "Silver"], ["gold", "Gold"], ["varnish", "Varnish"],
+    ["transparent_base", "Transparent Base"], ["fluor_pink", "Fluor Pink"],
+    ["fluor_yellow", "Orange"], ["rubine_red", "Warm Red"]
+  ].filter(([key]) => Number(formula[key]) > 0);
 
-  doc.setTextColor(0, 255, 0);
-  doc.text("P", 28, 20);
+  const drumKg = Number(formula.drum_kg) || 20;
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginX = 16;
+  const contentW = pageW - marginX * 2;
 
- 
-  doc.setTextColor(0, 0, 0);
+  // ── Helper: flat divider line ──
+  function hr(y, color) {
+    doc.setDrawColor(...(color || [225, 228, 232]));
+    doc.setLineWidth(0.4);
+    doc.line(marginX, y, pageW - marginX, y);
+  }
+
+  // ════════════════════════════════════════════
+  // HEADER BAND
+  // ════════════════════════════════════════════
+  doc.setFillColor(15, 23, 42); // slate-900
+  doc.rect(0, 0, pageW, 28, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(255, 255, 255);
+  doc.text("INK LAB", marginX, 13);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text("FORMULA SPECIFICATION SHEET", marginX, 19.5);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  doc.setFontSize(8.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Generated ${dateStr}`, pageW - marginX, 13, { align: "right" });
+  doc.setTextColor(96, 165, 250); // blue-400
+  doc.setFont("helvetica", "bold");
+  doc.text(String(formula.code || "-"), pageW - marginX, 19.5, { align: "right" });
+
+  // ════════════════════════════════════════════
+  // TITLE + KEY INFO STRIP
+  // ════════════════════════════════════════════
+  let y = 40;
+
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
-  doc.text("INK LAB FORMULA REPORT", 60, 20);
+  doc.setTextColor(15, 23, 42);
+  doc.text(String(formula.name || "Untitled formula"), marginX, y);
 
-  // =========================
-  // BASIC INFO
-  // =========================
-  doc.setFontSize(12);
-  doc.text(`Code: ${formula.code || "-"}`, 20, 40);
-  doc.text(`Name: ${formula.name || "-"}`, 20, 50);
-  
+  if (formula.pantone) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`Pantone ${formula.pantone}`, marginX, y + 6);
+    y += 6;
+  }
 
-  // =========================
-  // COLORS (only with quantities > 0)
-  // =========================
-  doc.setFontSize(12);
-  doc.text("Colors:", 20, 80);
+  y += 10;
 
-  const colors = [
-    ["Cyan", formula.cyan],
-    ["Magenta", formula.magenta],
-    ["Yellow", formula.yellow],
-    ["Black", formula.black],
-    ["White", formula.white],
-    ["Reflex Blue", formula.reflex_blue],
-    ["Violet", formula.violet],
-    ["Green", formula.green],
-    ["Silver", formula.silver],
-    ["Gold", formula.gold],
-    ["Varnish", formula.varnish],
-    ["Transparent Base", formula.transparent_base],
-    ["Fluor Pink", formula.fluor_pink],
-    ["Fluor Yellow", formula.fluor_yellow],
-    ["Rubine Red", formula.rubine_red],
-  ].filter(c => Number(c[1]) > 0);
+  // Info cards row: Drum size / Components / Date created
+  const cardW = (contentW - 8) / 3;
+  const cardH = 18;
+  const cards = [
+    ["DRUM SIZE", `${drumKg.toFixed(1)} KG`],
+    ["COMPONENTS", `${COLOR_ROWS.length} ink${COLOR_ROWS.length === 1 ? "" : "s"}`],
+    ["CREATED", formula.created_at ? new Date(formula.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "-"]
+  ];
 
-  let y = 90;
+  cards.forEach((card, i) => {
+    const cx = marginX + i * (cardW + 4);
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(cx, y, cardW, cardH, 2, 2, "FD");
 
-  colors.forEach(c => {
-    doc.text(`${c[0]}: ${Number(c[1]).toFixed(3)} KG`, 20, y);
-    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(card[0], cx + 4, y + 6.5);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(card[1], cx + 4, y + 14);
   });
 
-  // =========================
-  // BARCODE
-  // =========================
-  const barcodeCanvas = document.createElement("canvas");
+  y += cardH + 12;
 
-  JsBarcode(barcodeCanvas, formula.code, {
+  // ════════════════════════════════════════════
+  // INK COMPONENTS TABLE
+  // ════════════════════════════════════════════
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("INK COMPONENTS", marginX, y);
+  y += 5;
+  hr(y, [203, 213, 225]);
+  y += 6;
+
+  // Table header
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text("COLOUR", marginX + 10, y);
+  doc.text("WEIGHT (KG)", marginX + 95, y);
+  doc.text("% OF DRUM", marginX + 140, y);
+  y += 4;
+  hr(y, [226, 232, 240]);
+  y += 5;
+
+  if (COLOR_ROWS.length === 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184);
+    doc.text("No ink components recorded for this formula.", marginX + 10, y);
+    y += 8;
+  } else {
+    COLOR_ROWS.forEach(([key, label], i) => {
+      const kg = Number(formula[key]) || 0;
+      const pct = (kg / drumKg) * 100;
+
+      if (i % 2 === 0) {
+        doc.setFillColor(250, 250, 251);
+        doc.rect(marginX, y - 4, contentW, 7.2, "F");
+      }
+
+      // swatch
+      const rgb = SWATCH_RGB[key] || [200, 200, 200];
+      doc.setFillColor(...rgb);
+      doc.setDrawColor(210, 213, 217);
+      doc.setLineWidth(0.25);
+      doc.roundedRect(marginX, y - 3.2, 5.5, 5.5, 1, 1, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      doc.text(label, marginX + 10, y + 1);
+
+      doc.setFont("helvetica", "bold");
+      doc.text(kg.toFixed(3), marginX + 95, y + 1);
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 116, 139);
+      doc.text(`${pct.toFixed(1)}%`, marginX + 140, y + 1);
+
+      y += 7.2;
+    });
+  }
+
+  y += 4;
+  hr(y, [203, 213, 225]);
+  y += 8;
+
+  // ════════════════════════════════════════════
+  // LAB VALUES (optional)
+  // ════════════════════════════════════════════
+  const hasLab = formula.lab_l !== null && formula.lab_l !== undefined;
+
+  if (hasLab) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text("CIE L*a*b* VALUES", marginX, y);
+    y += 5;
+    hr(y, [203, 213, 225]);
+    y += 8;
+
+    const labVals = [
+      ["L*", formula.lab_l, "Lightness"],
+      ["a*", formula.lab_a, "Green \u2194 Red"],
+      ["b*", formula.lab_b, "Blue \u2194 Yellow"]
+    ];
+    const labCardW = (contentW - 8) / 3;
+
+    labVals.forEach((lv, i) => {
+      const cx = marginX + i * (labCardW + 4);
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(cx, y, labCardW, 16, 2, 2, "FD");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`${lv[0]} ${Number(lv[1]).toFixed(2)}`, cx + 4, y + 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(lv[2], cx + 4, y + 12.5);
+    });
+
+    y += 16 + 10;
+  }
+
+  // ════════════════════════════════════════════
+  // NOTES (optional)
+  // ════════════════════════════════════════════
+  if (formula.notes) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text("NOTES", marginX, y);
+    y += 5;
+    hr(y, [203, 213, 225]);
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    const noteLines = doc.splitTextToSize(String(formula.notes), contentW);
+    doc.text(noteLines, marginX, y);
+    y += noteLines.length * 4.5 + 6;
+  }
+
+  // ════════════════════════════════════════════
+  // CODES SECTION (barcode + QR) — pinned near bottom
+  // ════════════════════════════════════════════
+  const codesY = Math.max(y + 4, 235);
+
+  hr(codesY, [203, 213, 225]);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("TRACEABILITY", marginX, codesY + 8);
+
+  const barcodeCanvas = document.createElement("canvas");
+  JsBarcode(barcodeCanvas, formula.code || "NOCODE", {
     format: "CODE128",
     displayValue: true,
     width: 2,
-    height: 50
+    height: 50,
+    margin: 4
   });
-
   const barcodeImg = barcodeCanvas.toDataURL("image/png");
-  doc.addImage(barcodeImg, "PNG", 120, 35, 70, 25);
+  doc.addImage(barcodeImg, "PNG", marginX, codesY + 13, 70, 18);
 
-  // =========================
-  // QR CODE (safe async handling)
-  // =========================
   const qrDiv = document.createElement("div");
-
   new QRCode(qrDiv, {
-    text: JSON.stringify({
-      code: formula.code,
-      name: formula.name,
-      drum_kg: formula.drum_kg
-    }),
-    width: 120,
-    height: 120
+    text: JSON.stringify({ code: formula.code, name: formula.name, drum_kg: formula.drum_kg }),
+    width: 160,
+    height: 160
   });
 
   setTimeout(() => {
     const qrImg = qrDiv.querySelector("img")?.src;
-
     if (qrImg) {
-      doc.addImage(qrImg, "PNG", 145, 70, 45, 45);
+      doc.addImage(qrImg, "PNG", pageW - marginX - 24, codesY + 6, 24, 24);
     }
 
-    // =========================
-    // FOOTER
-    // =========================
-    doc.setFontSize(10);
-    doc.text("QUALITY FIRST - 3P Ink Lab System", 20, 280);
-    doc.text("Approved By: ____________", 120, 280);
+    // ── Footer ──
+    const footerY = 285;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(marginX, footerY - 6, pageW - marginX, footerY - 6);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text("Ink Lab ERP \u2014 Quality First", marginX, footerY);
+
+    doc.setTextColor(100, 116, 139);
+    doc.text("Approved by: ______________________", pageW - marginX, footerY, { align: "right" });
 
     doc.save(`${formula.code || "formula"}.pdf`);
   }, 300);
@@ -1842,7 +2092,6 @@ function calculateFormulaCorrection(formulaId) {
         return;
     }
 
-    // لو في formula محدد نقارن بيه
     let baseL = 0, baseA = 0, baseB = 0;
     if (formulaId) {
         const formula = allFormulas.find(f => f.id == formulaId);
@@ -1862,7 +2111,7 @@ function calculateFormulaCorrection(formulaId) {
     if (deltaL > 0.5)  correction.push("⬛ Add Black (too light)");
     if (deltaL < -0.5) correction.push("⬜ Add White (too dark)");
     if (deltaA > 0.5)  correction.push("🟢 Add Green (too red)");
-    if (deltaA < -0.5) correction.push("🔴 Add Rubine Red (too green)");
+    if (deltaA < -0.5) correction.push("🔴 Add Warm Red (too green)");
     if (deltaB > 0.5)  correction.push("🔵 Add Reflex Blue (too yellow)");
     if (deltaB < -0.5) correction.push("🟡 Add Yellow (too blue)");
 
@@ -1912,7 +2161,6 @@ setInterval(() => {
     loadTableBatchInfo(allFormulas);
 }, 20000);
 
-// Auto-refresh stock when returning to this page
 window.addEventListener("focus", () => {
     if (allFormulas.length) loadTableStockBadges(allFormulas);
 });
@@ -1936,13 +2184,20 @@ window.COLOR_LABELS = window.COLOR_LABELS || {
     varnish: "Varnish",
     transparent_base: "Transparent Base",
     fluor_pink: "Fluor Pink",
-    fluor_yellow: "Fluor Yellow",
-    rubine_red: "Rubine Red"
+    fluor_yellow: "Orange",
+    rubine_red: "Warm Red"
 };
 window.addEventListener("batch-updated", () => {
     loadReturnedValues(allFormulas);
 });
-window.openReturnHistory = openReturnHistory;
+
+// NOTE: removed the line `window.openReturnHistory = openReturnHistory;`
+// that previously existed here. It referenced openReturnHistory before
+// it was defined (the real definition is the assignment just below),
+// which threw "Cannot access before initialization" and silently
+// stopped the rest of this script from running -- including the
+// setMatchMode("ratio") call above that activates the match buttons
+// on page load. This was the root cause of both buttons looking dead.
 window.closeReturnModal = closeReturnModal;
 window.openReturnHistory = function (formulaId, code) {
     console.log("OPEN OK", formulaId, code);
@@ -1973,22 +2228,15 @@ window.openReturnHistory = function (formulaId, code) {
         `;
     });
 };
+
 function runAIEngine(newF) {
-
     const box = document.getElementById("match-box");
-
-    // 1. Ratio Match
     const ratioResult = runRatioMatch(newF, box);
-
-    // 2. Delta E Match
     runDeltaEMatch(newF, box);
 
-    // 3. Suggestions (لو موجود عندك بالفعل)
     const best = ratioResult?.best || null;
-
     if (best) {
         const suggestions = getCorrections(newF, best.f);
-
         console.log("AI Suggestions:", suggestions);
     }
 }
