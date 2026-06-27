@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ink-lab-erp",
+  "compatibility_date": "2026-06-27",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "ink-lab-v2"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
